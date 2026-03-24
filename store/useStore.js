@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 
 /**
@@ -35,7 +36,6 @@ const useStore = create((set) => ({
   daysTracked: 0,
   trendMessage: "",
   trendStatus: "neutral",
-  streak: 0,
   streak: 0,
 
   /**
@@ -213,6 +213,34 @@ const useStore = create((set) => ({
     } catch (err) {
       console.error('Store fetch failed:', err);
       throw err;
+    }
+  },
+
+  /**
+   * setGoalCalories(goal)
+   * Updates the daily goal and persists to AsyncStorage.
+   */
+  setGoalCalories: async (goal) => {
+    try {
+      set({ goalCalories: goal });
+      await AsyncStorage.setItem('goalCalories', goal.toString());
+    } catch (e) {
+      console.error('Failed to save goalCalories', e);
+    }
+  },
+
+  /**
+   * loadGoalCalories()
+   * Loads the persisted goal on app start.
+   */
+  loadGoalCalories: async () => {
+    try {
+      const stored = await AsyncStorage.getItem('goalCalories');
+      if (stored) {
+        set({ goalCalories: Number(stored) });
+      }
+    } catch (e) {
+      console.error('Failed to load goalCalories', e);
     }
   },
 }));

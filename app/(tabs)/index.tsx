@@ -298,16 +298,22 @@ function EntryRow({
         </View>
         <View style={styles.entryActions}>
           <TouchableOpacity
-            onPress={() => onEdit(item)}
+            onPress={() => {
+              console.log('Edit pressed for:', item.id);
+              onEdit(item);
+            }}
             style={styles.actionBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 10 }}
           >
             <IconSymbol name="pencil" size={16} color={COLORS.textSubtle} />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => onDelete(item.id)}
+            onPress={() => {
+              console.log('Delete pressed for:', item.id);
+              onDelete(item.id);
+            }}
             style={styles.actionBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{ top: 20, bottom: 20, left: 10, right: 20 }}
           >
             <Text style={styles.deleteBtnText}>×</Text>
           </TouchableOpacity>
@@ -393,6 +399,11 @@ export default function HomeScreen() {
   const [editText, setEditText] = useState("");
   const [isEditLoading, setIsEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  // ── Delete State ────────────────────────────────────────
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -495,33 +506,32 @@ export default function HomeScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert(
-      "Delete Entry",
-      "Are you sure you want to delete this entry? This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const { error: dbError } = await supabase
-                .from('entries')
-                .update({ is_deleted: true })
-                .eq('id', id);
+    setDeletingId(id);
+    setIsDeleteOpen(true);
+  };
 
-              if (dbError) throw dbError;
+  const handleConfirmDelete = async () => {
+    if (!deletingId || isDeleteLoading) return;
 
-              // Refresh UI
-              await fetchEntries();
-            } catch (err) {
-              console.error("Delete failed:", err);
-              Alert.alert("Error", "Failed to delete entry. Please try again.");
-            }
-          }
-        }
-      ]
-    );
+    setIsDeleteLoading(true);
+    try {
+      const { error: dbError } = await supabase
+        .from('entries')
+        .update({ is_deleted: true })
+        .eq('id', deletingId);
+
+      if (dbError) throw dbError;
+
+      // Refresh UI
+      await fetchEntries();
+      setIsDeleteOpen(false);
+      setDeletingId(null);
+    } catch (err) {
+      console.error("Delete failed:", err);
+      Alert.alert("Error", "Failed to delete entry. Please try again.");
+    } finally {
+      setIsDeleteLoading(false);
+    }
   };
 
   const handleEditPress = (entry: Entry) => {
@@ -780,6 +790,60 @@ export default function HomeScreen() {
             </Pressable>
           </Pressable>
         </Modal>
+
+        {/* ── Delete Confirmation Modal ── */}
+        <Modal
+          visible={isDeleteOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsDeleteOpen(false)}
+        >
+          <Pressable 
+            style={styles.modalOverlay} 
+            onPress={() => !isDeleteLoading && setIsDeleteOpen(false)}
+          >
+            <Pressable style={styles.modalContainer} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Delete Entry</Text>
+                <TouchableOpacity 
+                  onPress={() => setIsDeleteOpen(false)}
+                  disabled={isDeleteLoading}
+                >
+                  <Text style={styles.modalClose}>×</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalDeleteMsg}>
+                Are you sure you want to delete this entry? This action cannot be undone.
+              </Text>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => setIsDeleteOpen(false)}
+                  disabled={isDeleteLoading}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.modalDeleteBtn,
+                    isDeleteLoading && styles.modalBtnDisabled
+                  ]}
+                  onPress={handleConfirmDelete}
+                  disabled={isDeleteLoading}
+                >
+                  {isDeleteLoading ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.modalDeleteText}>Delete</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -863,13 +927,21 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionBtn: {
-    padding: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: COLORS.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   deleteBtnText: {
-    fontSize: 24,
+    fontSize: 20,
     color: COLORS.textMuted,
-    lineHeight: 24,
+    lineHeight: 20,
     marginTop: -2,
+    fontWeight: "400",
   },
 
   // Modal Styles
@@ -960,6 +1032,25 @@ const styles = StyleSheet.create({
   modalFooter: {
     flexDirection: "row",
     gap: 12,
+  },
+  modalDeleteMsg: {
+    fontSize: 16,
+    color: COLORS.textSubtle,
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  modalDeleteBtn: {
+    backgroundColor: COLORS.danger,
+    borderRadius: 14,
+    height: 54,
+    flex: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalDeleteText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "700",
   },
 
   // Calorie Meter
