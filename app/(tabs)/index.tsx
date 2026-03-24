@@ -391,6 +391,8 @@ export default function HomeScreen() {
   const addEntry = useStore((s) => s.addEntry);
   const updateEntry = useStore((s: any) => s.updateEntry);
   const fetchEntries = useStore((s: any) => s.fetchEntries);
+  const loadGoalCalories = useStore((s: any) => s.loadGoalCalories);
+  const goalCalories = useStore((s: any) => s.goalCalories);
   const removeEntry = useStore((s) => s.removeEntry);
 
   // ── Edit State ──────────────────────────────────────────
