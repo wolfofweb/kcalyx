@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import useStore from '@/store/useStore';
+import { supabase } from '@/services/supabase';
 
 // ─────────────────────────────────────────────
 // Theme
@@ -218,19 +219,42 @@ function GoogleFitButton({ connected }: { connected: boolean }) {
 // Screen
 // ─────────────────────────────────────────────
 export default function ProfileScreen() {
-  const [isKg, setIsKg] = useState(true);
-  const [currentWeight, setCurrentWeight] = useState('76.5');
-  const [targetWeight, setTargetWeight] = useState('70.0');
-  const [height, setHeight] = useState('175');
-  const [googleFitConnected] = useState(false);
-
   const goalCalories = useStore((state: any) => state.goalCalories);
   const setGoalCalories = useStore((state: any) => state.setGoalCalories);
   const streak = useStore((state: any) => state.streak);
   const entries = useStore((state: any) => state.entries);
+  const user = useStore((state: any) => state.user);
+  const setUser = useStore((state: any) => state.setUser);
+  const storeHeight = useStore((state: any) => state.height);
+  const storeWeight = useStore((state: any) => state.weight);
+  const storeTargetWeight = useStore((state: any) => state.targetWeight);
+
+  const [isKg, setIsKg] = useState(true);
+  const [currentWeight, setCurrentWeight] = useState(storeWeight || '76.5');
+  const [targetWeight, setTargetWeight] = useState(storeTargetWeight || '70.0');
+  const [height, setHeight] = useState(storeHeight || '175');
+  const [googleFitConnected] = useState(false);
+
+  // Derive name and email from the authenticated user
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'You';
+  const displayEmail = user?.email || '';
 
   const [localGoal, setLocalGoal] = useState(goalCalories.toString());
   const [isSaving, setIsSaving] = useState(false);
+
+  const handleSignOut = async () => {
+    Alert.alert('Sign out', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign out',
+        style: 'destructive',
+        onPress: async () => {
+          await supabase.auth.signOut();
+          setUser(null);
+        },
+      },
+    ]);
+  };
 
   // Convert display values when unit switches
   const handleUnitToggle = (val: boolean) => {
@@ -277,7 +301,7 @@ export default function ProfileScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Avatar */}
-        <AvatarSection name="Alex Johnson" email="alex@example.com" />
+        <AvatarSection name={displayName} email={displayEmail} />
 
         {/* Stats strip */}
         <View style={styles.statsStrip}>
@@ -404,7 +428,7 @@ export default function ProfileScreen() {
             icon="🚪"
             label="Sign out"
             accent={C.rose}
-            onPress={() => Alert.alert('Sign out', 'Are you sure?', [{ text: 'Cancel' }, { text: 'Sign out', style: 'destructive' }])}
+            onPress={handleSignOut}
           />
         </View>
 

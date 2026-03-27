@@ -194,9 +194,19 @@ function CalorieMeter({
   carbs?: number;
   fat?: number;
 }) {
-  const pct = Math.min(Math.max(total / goal, 0), 1);
-  const remaining = goal - total;
-  const over = total > goal;
+  const effectiveGoal = goal || 2000;
+  const isOver = total > effectiveGoal;
+  const pct = Math.min(Math.max(total / effectiveGoal, 0), 1);
+  const diff = Math.abs(effectiveGoal - total);
+
+  // Macro goals (example balanced split: 30/40/30)
+  const PROTEIN_GOAL = Math.round((effectiveGoal * 0.30) / 4);
+  const CARBS_GOAL = Math.round((effectiveGoal * 0.40) / 4);
+  const FAT_GOAL = Math.round((effectiveGoal * 0.30) / 9);
+
+  const proteinPct = Math.min(protein / PROTEIN_GOAL, 1);
+  const carbsPct = Math.min(carbs / CARBS_GOAL, 1);
+  const fatPct = Math.min(fat / FAT_GOAL, 1);
 
   return (
     <View style={styles.meterCard}>
@@ -215,7 +225,7 @@ function CalorieMeter({
             styles.progressFill,
             {
               width: `${pct * 100}%` as any,
-              backgroundColor: over ? COLORS.danger : COLORS.accent,
+              backgroundColor: isOver ? COLORS.danger : COLORS.accent,
             },
           ]}
         />
@@ -223,17 +233,17 @@ function CalorieMeter({
 
       <View style={styles.meterFooter}>
         <Text style={styles.meterGoalText}>
-          Goal: {goal.toLocaleString()} kcal
+          Goal: {effectiveGoal.toLocaleString()} kcal
         </Text>
         <Text
           style={[
             styles.meterRemaining,
-            { color: over ? COLORS.danger : COLORS.accent },
+            { color: isOver ? COLORS.danger : COLORS.accent },
           ]}
         >
-          {over
-            ? `${(total - goal).toLocaleString()} over`
-            : `${remaining.toLocaleString()} left`}
+          {isOver
+            ? `${diff.toLocaleString()} over`
+            : `${diff.toLocaleString()} left`}
         </Text>
       </View>
 
@@ -394,6 +404,7 @@ export default function HomeScreen() {
   const loadGoalCalories = useStore((s: any) => s.loadGoalCalories);
   const goalCalories = useStore((s: any) => s.goalCalories);
   const removeEntry = useStore((s) => s.removeEntry);
+  const user = useStore((s: any) => s.user);
 
   // ── Edit State ──────────────────────────────────────────
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -481,7 +492,7 @@ export default function HomeScreen() {
       // 4. Insert into Supabase
       const { error: dbError } = await supabase.from('entries').insert({
         entry_date: selectedDate,
-        user_id: "dev-user",
+        user_id: user?.id ?? 'unknown',
         text: trimmed,
         items: foodItems,
         total_calories,

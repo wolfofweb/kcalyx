@@ -67,21 +67,21 @@ function CalorieCard() {
   
   const goalCalories = useStore((state: any) => state.goalCalories);
   
-  const pct = Math.min(totalCalories / goalCalories, 1);
-  const remaining = Math.max(goalCalories - totalCalories, 0);
-  const over = Math.max(totalCalories - goalCalories, 0);
+  const isOver = totalCalories > goalCalories;
+  const pct = Math.min(totalCalories / goalCalories, 1.2); // allow slightly over for visualization
+  const diff = Math.abs(goalCalories - totalCalories);
 
-  // Macro goals (example)
-  const PROTEIN_GOAL = 120;
-  const CARBS_GOAL = 250;
-  const FAT_GOAL = 70;
+  // Macro goals (example balanced split: 30/40/30)
+  const PROTEIN_GOAL = Math.round((goalCalories * 0.30) / 4);
+  const CARBS_GOAL = Math.round((goalCalories * 0.40) / 4);
+  const FAT_GOAL = Math.round((goalCalories * 0.30) / 9);
 
   const proteinPct = Math.min(totalProtein / PROTEIN_GOAL, 1);
   const carbsPct = Math.min(totalCarbs / CARBS_GOAL, 1);
   const fatPct = Math.min(totalFat / FAT_GOAL, 1);
 
   return (
-    <View style={[styles.card, styles.heroCard]}>
+    <View style={[styles.card, styles.heroCard, isOver && { borderColor: '#F87171' }]}>
       {/* Top row */}
       <View style={styles.heroTop}>
         <View>
@@ -91,21 +91,21 @@ function CalorieCard() {
             <Text style={styles.heroUnit}> kcal</Text>
           </Text>
         </View>
-        <View style={styles.heroBadge}>
-          <Text style={styles.heroBadgeText}>🔥</Text>
+        <View style={[styles.heroBadge, isOver && { backgroundColor: '#450A0A' }]}>
+          <Text style={styles.heroBadgeText}>{isOver ? '⚠️' : '🔥'}</Text>
         </View>
       </View>
 
       {/* Progress bar */}
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${pct * 100}%` as any }]} />
+        <View style={[styles.progressFill, { width: `${Math.min(pct,1) * 100}%` as any, backgroundColor: isOver ? '#F87171' : C.accent }]} />
       </View>
 
       {/* Footer row */}
       <View style={styles.heroFooter}>
         <Text style={styles.heroFooterText}>Goal: {goalCalories.toLocaleString()} kcal</Text>
-        <Text style={[styles.heroFooterText, { color: C.accent }]}>
-          {remaining.toLocaleString()} remaining
+        <Text style={[styles.heroFooterText, { color: isOver ? '#F87171' : C.accent }]}>
+          {diff.toLocaleString()} {isOver ? 'over limit' : 'remaining'}
         </Text>
       </View>
 

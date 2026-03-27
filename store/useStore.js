@@ -23,6 +23,112 @@ import { supabase } from '../services/supabase';
  * }
  */
 const useStore = create((set) => ({
+  // ── Auth state ────────────────────────────────────────────
+  user: null,
+  isLoading: true,
+
+  setUser: (user) => set({ user }),
+  setLoading: (isLoading) => set({ isLoading }),
+
+  // ── Onboarding state ──────────────────────────────────────
+  hasOnboarded: false,
+  isProfileLoading: true,
+  profile: null,
+  height: '',
+  weight: '',
+  targetWeight: '',
+
+  setProfile: (profile) => set({ profile }),
+
+  setHasOnboarded: async (value) => {
+    set({ hasOnboarded: value });
+    await AsyncStorage.setItem('hasOnboarded', value ? '1' : '0');
+  },
+
+  /**
+   * calculateAndSetGoal(weight, targetWeight)
+   * Computes goalCalories = weight * 22, minus 350 if losing weight.
+   */
+  calculateAndSetGoal: async (weight, targetWeight) => {
+    const w = parseFloat(weight) || 0;
+    const tw = parseFloat(targetWeight) || 0;
+    if (w <= 0) return;
+
+    let goal = w * 22;
+    if (tw < w) {
+      goal -= 350; // Diet deficit
+    }
+    
+    await useStore.getState().setGoalCalories(Math.round(goal));
+  },
+
+  setBodyMetrics: async ({ height, weight, targetWeight }) => {
+    const profile = { height, weight, targetWeight };
+    set({ height, weight, targetWeight, profile });
+    await AsyncStorage.setItem('bodyMetrics', JSON.stringify(profile));
+    await useStore.getState().calculateAndSetGoal(weight, targetWeight);
+  },
+
+  loadOnboardingState: async () => {
+    try {
+      set({ isProfileLoading: true });
+      const onboarded = await AsyncStorage.getItem('hasOnboarded');
+      const metricsRaw = await AsyncStorage.getItem('bodyMetrics');
+      const metrics = metricsRaw ? JSON.parse(metricsRaw) : {};
+      set({
+        hasOnboarded: onboarded === '1',
+        height: metrics.height || '',
+        weight: metrics.weight || '',
+        targetWeight: metrics.targetWeight || '',
+        profile: metrics.height ? metrics : null,
+        isProfileLoading: false,
+      });
+    } catch (e) {
+      console.error('Failed to load onboarding state', e);
+      set({ isProfileLoading: false });
+    }
+  },
+
+  fetchProfile: async () => {
+    const userId = useStore.getState().user?.id;
+    if (!userId) return;
+
+    try {
+      set({ isProfileLoading: true });
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error; 
+
+      if (data) {
+        const profile = {
+          height: String(data.height || ''),
+          weight: String(data.weight || ''),
+          targetWeight: String(data.target_weight || ''),
+        };
+        set({
+          hasOnboarded: true,
+          height: profile.height,
+          weight: profile.weight,
+          targetWeight: profile.targetWeight,
+          profile,
+        });
+        await AsyncStorage.setItem('hasOnboarded', '1');
+        await AsyncStorage.setItem('bodyMetrics', JSON.stringify(profile));
+        await useStore.getState().calculateAndSetGoal(profile.weight, profile.targetWeight);
+      } else {
+        set({ hasOnboarded: false });
+        await AsyncStorage.setItem('hasOnboarded', '0');
+      }
+    } catch (err) {
+      console.error('Store fetchProfile failed:', err);
+    } finally {
+      set({ isProfileLoading: false });
+    }
+  },
   entries: [],
   goalCalories: 1800,
   totalCalories: 0,
@@ -57,12 +163,14 @@ const useStore = create((set) => ({
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(now.getDate() - 6); // 7 days including today
       const startDate = sevenDaysAgo.toISOString().split('T')[0];
+      const userId = useStore.getState().user?.id;
 
       const { data, error } = await supabase
         .from('entries')
         .select('entry_date, total_calories')
         .gte('entry_date', startDate)
-        .eq('is_deleted', false);
+        .eq('is_deleted', false)
+        .eq('user_id', userId);
 
       if (error) throw error;
 
@@ -186,11 +294,13 @@ const useStore = create((set) => ({
   fetchEntries: async () => {
     try {
       const dateToFetch = useStore.getState().selectedDate;
+      const userId = useStore.getState().user?.id;
       const { data, error } = await supabase
         .from('entries')
         .select('*')
         .eq('entry_date', dateToFetch)
         .eq('is_deleted', false)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
