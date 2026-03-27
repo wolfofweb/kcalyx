@@ -409,6 +409,11 @@ export default function HomeScreen() {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  useEffect(() => {
+    fetchEntries();
+    loadGoalCalories();
+  }, [selectedDate]);
+
   // ── Date Navigation ───────────────────────────────────────
   const handlePrevDay = () => {
     const d = new Date(selectedDate);
@@ -647,6 +652,7 @@ export default function HomeScreen() {
               {/* ── Calorie meter ── */}
               <CalorieMeter
                 total={Math.max(totalCalories, 0)}
+                goal={goalCalories}
                 protein={totalProtein}
                 carbs={totalCarbs}
                 fat={totalFat}

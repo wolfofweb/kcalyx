@@ -45,7 +45,7 @@ const WEEKLY_BARS = [
 const TODAY_IDX = 6; // Sunday = today
 
 // const TOTAL_CALORIES = 1475; // Replaced by useStore
-const CALORIE_GOAL = 2000;
+// const CALORIE_GOAL = 2000; // Replaced by useStore
 const STEPS = 6_842;
 const STEPS_GOAL = 10_000;
 const CONSISTENCY = 78; // percent
@@ -65,8 +65,11 @@ function CalorieCard() {
   const totalCarbs = useStore((state) => state.totalCarbs);
   const totalFat = useStore((state) => state.totalFat);
   
-  const pct = Math.min(totalCalories / CALORIE_GOAL, 1);
-  const remaining = Math.max(CALORIE_GOAL - totalCalories, 0);
+  const goalCalories = useStore((state: any) => state.goalCalories);
+  
+  const pct = Math.min(totalCalories / goalCalories, 1);
+  const remaining = Math.max(goalCalories - totalCalories, 0);
+  const over = Math.max(totalCalories - goalCalories, 0);
 
   // Macro goals (example)
   const PROTEIN_GOAL = 120;
@@ -100,7 +103,7 @@ function CalorieCard() {
 
       {/* Footer row */}
       <View style={styles.heroFooter}>
-        <Text style={styles.heroFooterText}>Goal: {CALORIE_GOAL.toLocaleString()} kcal</Text>
+        <Text style={styles.heroFooterText}>Goal: {goalCalories.toLocaleString()} kcal</Text>
         <Text style={[styles.heroFooterText, { color: C.accent }]}>
           {remaining.toLocaleString()} remaining
         </Text>
@@ -137,6 +140,7 @@ function CalorieCard() {
 /** Weekly bar chart (placeholder) */
 function WeeklyChart() {
   const weeklyData = useStore((state: any) => state.weeklyData);
+  const goalCalories = useStore((state: any) => state.goalCalories);
   const totalCalories = useStore((state: any) => state.totalCalories);
 
   return (
@@ -154,7 +158,7 @@ function WeeklyChart() {
         {weeklyData.map((day: any, i: number) => {
           const isToday = i === (weeklyData.length - 1);
           // Use real calories for today from daily total if it's the current date
-          const barValue = Math.min(day.calories / CALORIE_GOAL, 1.2);
+          const barValue = Math.min(day.calories / goalCalories, 1.2);
 
           return (
             <View key={day.date} style={styles.barCol}>

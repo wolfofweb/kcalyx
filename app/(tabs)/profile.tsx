@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import useStore from '@/store/useStore';
 
 // ─────────────────────────────────────────────
 // Theme
@@ -78,8 +79,8 @@ function AvatarSection({ name, email }: { name: string; email: string }) {
   );
 }
 
-/** Editable weight row */
-function WeightRow({
+/** Editable metric row (Weight, Height, etc.) */
+function MetricRow({
   label,
   value,
   onChange,
@@ -93,14 +94,11 @@ function WeightRow({
   accent: string;
 }) {
   return (
-    <View style={styles.weightRow}>
-      <View style={styles.weightLeft}>
-        <Text style={styles.weightLabel}>{label}</Text>
-        <Text style={[styles.weightUnit, { color: accent }]}>{unit}</Text>
-      </View>
-      <View style={[styles.weightInputWrap, { borderColor: accent + '50' }]}>
+    <View style={styles.metricRow}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <View style={styles.goalInputWrap}>
         <TextInput
-          style={[styles.weightInput, { color: accent }]}
+          style={[styles.goalInput, { color: accent }]}
           value={value}
           onChangeText={onChange}
           keyboardType="decimal-pad"
@@ -108,6 +106,7 @@ function WeightRow({
           selectTextOnFocus
           maxLength={6}
         />
+        <Text style={styles.goalUnit}>{unit}</Text>
       </View>
     </View>
   );
@@ -222,7 +221,16 @@ export default function ProfileScreen() {
   const [isKg, setIsKg] = useState(true);
   const [currentWeight, setCurrentWeight] = useState('76.5');
   const [targetWeight, setTargetWeight] = useState('70.0');
+  const [height, setHeight] = useState('175');
   const [googleFitConnected] = useState(false);
+
+  const goalCalories = useStore((state: any) => state.goalCalories);
+  const setGoalCalories = useStore((state: any) => state.setGoalCalories);
+  const streak = useStore((state: any) => state.streak);
+  const entries = useStore((state: any) => state.entries);
+
+  const [localGoal, setLocalGoal] = useState(goalCalories.toString());
+  const [isSaving, setIsSaving] = useState(false);
 
   // Convert display values when unit switches
   const handleUnitToggle = (val: boolean) => {
@@ -247,6 +255,18 @@ export default function ProfileScreen() {
       : `${Math.abs(diff).toFixed(1)} ${unit} to gain`;
   const diffColor = diff === 0 ? C.accent : diff < 0 ? C.amber : C.indigo;
 
+  const handleSaveGoal = async () => {
+    const val = parseInt(localGoal);
+    if (isNaN(val) || val <= 0) {
+      Alert.alert('Invalid Goal', 'Please enter a valid numeric calorie goal.');
+      return;
+    }
+    setIsSaving(true);
+    await setGoalCalories(val);
+    setIsSaving(false);
+    Alert.alert('Success', 'Calorie goal updated!');
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
@@ -262,9 +282,9 @@ export default function ProfileScreen() {
         {/* Stats strip */}
         <View style={styles.statsStrip}>
           {[
-            { label: 'Streak', value: '6d', color: C.amber },
-            { label: 'Entries', value: '142', color: C.accent },
-            { label: 'Goal', value: '-8%', color: C.indigo },
+            { label: 'Streak', value: `${streak}d`, color: C.amber },
+            { label: 'Entries', value: entries.length.toString(), color: C.accent },
+            { label: 'Goal', value: goalCalories.toString(), color: C.indigo },
           ].map(s => (
             <View key={s.label} style={styles.statCell}>
               <Text style={[styles.statCellNum, { color: s.color }]}>{s.value}</Text>
@@ -273,20 +293,28 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {/* ── Weight ── */}
-        <SectionLabel label="WEIGHT" />
+        {/* ── Body Metrics ── */}
+        <SectionLabel label="BODY METRICS" />
         <View style={styles.card}>
           <UnitToggle isKg={isKg} onToggle={handleUnitToggle} />
           <Divider />
-          <WeightRow
+          <MetricRow
+            label="Height"
+            value={height}
+            onChange={setHeight}
+            unit="cm"
+            accent={C.indigo}
+          />
+          <Divider />
+          <MetricRow
             label="Current weight"
             value={currentWeight}
             onChange={setCurrentWeight}
             unit={unit}
-            accent={C.textSubtle}
+            accent={C.accent}
           />
           <Divider />
-          <WeightRow
+          <MetricRow
             label="Target weight"
             value={targetWeight}
             onChange={setTargetWeight}
@@ -310,7 +338,35 @@ export default function ProfileScreen() {
         {/* ── Goals ── */}
         <SectionLabel label="GOALS" />
         <View style={styles.card}>
-          <SettingRow icon="🎯" label="Daily calorie goal" value="2,000 kcal" />
+          <View style={styles.goalInputRow}>
+            <View style={styles.goalInputLeft}>
+              <View style={[styles.settingIconWrap, { backgroundColor: C.surfaceElevated }]}>
+                <Text style={styles.settingIcon}>🎯</Text>
+              </View>
+              <Text style={styles.settingLabel}>Daily calorie goal</Text>
+            </View>
+            <View style={styles.goalInputWrap}>
+              <TextInput
+                style={styles.goalInput}
+                value={localGoal}
+                onChangeText={setLocalGoal}
+                keyboardType="numeric"
+                returnKeyType="done"
+                placeholder="1800"
+                placeholderTextColor={C.textMuted}
+              />
+              <Text style={styles.goalUnit}>kcal</Text>
+            </View>
+          </View>
+          
+          <TouchableOpacity 
+            style={[styles.saveBtn, isSaving && { opacity: 0.5 }]} 
+            onPress={handleSaveGoal}
+            disabled={isSaving}
+          >
+            <Text style={styles.saveBtnText}>{isSaving ? 'Saving...' : 'Save Goal'}</Text>
+          </TouchableOpacity>
+
           <Divider />
           <SettingRow icon="🥩" label="Protein target" value="120 g" />
           <Divider />
@@ -505,45 +561,17 @@ const styles = StyleSheet.create({
   },
 
   // Weight row
-  weightRow: {
+  metricRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
   },
-  weightLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  weightLabel: {
+  metricLabel: {
     fontSize: 15,
     color: C.text,
     fontWeight: '500',
-  },
-  weightUnit: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  weightInputWrap: {
-    backgroundColor: C.surfaceElevated,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    minWidth: 80,
-    alignItems: 'flex-end',
-  },
-  weightInput: {
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'right',
-    letterSpacing: -0.3,
-    padding: 0,
-    margin: 0,
   },
 
   // Diff row
@@ -644,5 +672,58 @@ const styles = StyleSheet.create({
     color: C.textMuted,
     marginTop: 16,
     marginBottom: 8,
+  },
+  
+  // Goal Input Styles
+  goalInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  goalInputLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  goalInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.surfaceElevated,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  goalInput: {
+    color: C.accent,
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'right',
+    width: 60,
+    padding: 0,
+  },
+  goalUnit: {
+    color: C.textMuted,
+    fontSize: 12,
+    marginLeft: 4,
+    fontWeight: '600',
+  },
+  saveBtn: {
+    backgroundColor: C.accent,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  saveBtnText: {
+    color: C.bg,
+    fontWeight: '800',
+    fontSize: 14,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 });
