@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
+import * as Linking from 'expo-linking';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import useStore from '@/store/useStore';
@@ -30,25 +31,45 @@ export default function RootLayout() {
   const setLoading = useStore((s: any) => s.setLoading);
 
   useEffect(() => {
-    // Load persisted onboarding state on app start
+    // 1. Load persisted onboarding state
     loadOnboardingState().catch(console.error);
 
-    // Check for existing session
+    // 2. Check for existing session
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null);
-      setLoading(false);
+      if (!data.session) setLoading(false); // If no session, stop basic loading
     });
 
-    // Listen for auth state changes
+    // 3. Listen for auth state changes (crucial for linking flow)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // 4. Handle Deep Linking manually for OAuth redirect
+    const handleDeepLink = (event: { url: string }) => {
+      // The Supabase client automatically handles session from hash fragment 
+      // when it sees the URL if we are listening to auth changes.
+      // But we can ensure session gets extracted:
+      if (event.url) {
+        // This is usually handled by onAuthStateChange if browser returns to app
+      }
+    };
+
+    const subscribe = Linking.addEventListener('url', handleDeepLink);
+
+    // Check if app was opened via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      subscribe.remove();
+    };
   }, []);
 
-  // Fetch app data when user logs in
+  // Fetch app data when user is available and not changing
   useEffect(() => {
     if (user) {
       fetchProfile().catch(console.error);

@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { supabase } from '../services/supabase';
+import CustomAlert from '../components/CustomAlert';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -32,14 +33,19 @@ const C = {
 
 export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+  }>({ visible: false, title: '', message: '' });
 
   const handleGoogleLogin = async () => {
     if (isLoading) return;
     setIsLoading(true);
 
     try {
-      // Build redirect URI using Expo Linking (no expo-auth-session needed)
-      const redirectTo = Linking.createURL('/');
+      // Build redirect URI using Expo Linking (kcalyx://auth/callback)
+      const redirectTo = Linking.createURL('auth/callback');
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -52,10 +58,12 @@ export default function LoginScreen() {
       if (error) throw error;
       if (!data?.url) throw new Error('No OAuth URL returned');
 
+      // Use WebBrowser to open login and wait for redirect
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
       if (result.type === 'success' && result.url) {
-        // Parse hash fragment — Supabase returns tokens in URL #hash
+        // Option 1: Supabase client automatically picks up session when URL reaches app via Deep Link
+        // Option 2: Extract manually for immediate set (this is the current implementation)
         const hash = result.url.split('#')[1] ?? '';
         const params = new URLSearchParams(hash);
         const access_token = params.get('access_token');
@@ -71,10 +79,11 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       console.error('Google login error:', err);
-      Alert.alert(
-        'Login Failed',
-        err.message || 'Could not sign in with Google. Please try again.'
-      );
+      setAlertConfig({
+        visible: true,
+        title: 'Login Failed',
+        message: err.message || 'Could not sign in with Google. Please try again.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -137,6 +146,14 @@ export default function LoginScreen() {
           </Text>
         </View>
       </View>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onConfirm={() => setAlertConfig({ ...alertConfig, visible: false })}
+        confirmText="OK"
+      />
     </SafeAreaView>
   );
 }

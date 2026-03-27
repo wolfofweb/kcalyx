@@ -20,6 +20,7 @@ import { parseFoodWithAI } from "../../services/aiService";
 import { supabase } from "../../services/supabase";
 import useStore from "../../store/useStore";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import CustomAlert from "@/components/CustomAlert";
 
 // ──────────────────────────────────────────────
 // Types
@@ -395,16 +396,17 @@ export default function HomeScreen() {
   const totalCalories = useStore((s) => s.totalCalories);
   const totalProtein = useStore((s) => s.totalProtein);
   const totalCarbs = useStore((s) => s.totalCarbs);
-  const totalFat = useStore((s) => s.totalFat);
-  const selectedDate = useStore((s: any) => s.selectedDate);
-  const setSelectedDate = useStore((s: any) => s.setSelectedDate);
-  const addEntry = useStore((s) => s.addEntry);
   const updateEntry = useStore((s: any) => s.updateEntry);
   const fetchEntries = useStore((s: any) => s.fetchEntries);
   const loadGoalCalories = useStore((s: any) => s.loadGoalCalories);
   const goalCalories = useStore((s: any) => s.goalCalories);
   const removeEntry = useStore((s) => s.removeEntry);
   const user = useStore((s: any) => s.user);
+  const totalFat = useStore((s) => s.totalFat);
+  const selectedDate = useStore((s: any) => s.selectedDate);
+  const setSelectedDate = useStore((s: any) => s.setSelectedDate);
+  const addEntry = useStore((s) => s.addEntry);
+  const deleteEntry = useStore((s) => s.removeEntry); // Alias just in case it's used elsewhere as deleteEntry
 
   // ── Edit State ──────────────────────────────────────────
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -413,8 +415,16 @@ export default function HomeScreen() {
   const [isEditLoading, setIsEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // ── Delete State ────────────────────────────────────────
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    confirmColor?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }>({ visible: false, title: "", message: "", onConfirm: () => {} });
+
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
 
@@ -505,13 +515,15 @@ export default function HomeScreen() {
 
       // 5. Success -> Update local store & clear input
       const newEntry: Entry = {
-        id: Date.now().toString(),
+        id: Date.now().toString(), // Note: Supabase ID is better, but this works for local UI update
         text: trimmed,
         items: foodItems,
         time: getTime(),
         type,
       };
-      addEntry(newEntry);
+      
+      // Better to fetch entries from Supabase to get real ID and updated list
+      await fetchEntries();
       setInputText("");
     } catch (err: any) {
       console.error("Add failed:", err);
@@ -523,32 +535,42 @@ export default function HomeScreen() {
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDeleteRequest = (id: string) => {
     setDeletingId(id);
-    setIsDeleteOpen(true);
+    setAlertConfig({
+      visible: true,
+      title: "Delete Entry",
+      message: "Are you sure you want to delete this entry? This action cannot be undone.",
+      confirmText: "Delete",
+      confirmColor: COLORS.danger,
+      onConfirm: () => handleConfirmDelete(id),
+      onCancel: () => setAlertConfig(prev => ({ ...prev, visible: false })),
+    });
   };
 
-  const handleConfirmDelete = async () => {
-    if (!deletingId || isDeleteLoading) return;
-
+  const handleConfirmDelete = async (id: string) => {
     setIsDeleteLoading(true);
     try {
       const { error: dbError } = await supabase
         .from('entries')
         .update({ is_deleted: true })
-        .eq('id', deletingId);
+        .eq('id', id);
 
       if (dbError) throw dbError;
 
-      // Refresh UI
       await fetchEntries();
-      setIsDeleteOpen(false);
-      setDeletingId(null);
+      setAlertConfig(prev => ({ ...prev, visible: false }));
     } catch (err) {
       console.error("Delete failed:", err);
-      Alert.alert("Error", "Failed to delete entry. Please try again.");
+      setAlertConfig({
+        visible: true,
+        title: "Error",
+        message: "Failed to delete entry. Please try again.",
+        onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false })),
+      });
     } finally {
       setIsDeleteLoading(false);
+      setDeletingId(null);
     }
   };
 
@@ -729,7 +751,7 @@ export default function HomeScreen() {
           renderItem={({ item }) => (
             <EntryRow 
               item={item} 
-              onDelete={handleDelete} 
+              onDelete={handleDeleteRequest} 
               onEdit={handleEditPress}
             />
           )}
@@ -810,59 +832,17 @@ export default function HomeScreen() {
           </Pressable>
         </Modal>
 
-        {/* ── Delete Confirmation Modal ── */}
-        <Modal
-          visible={isDeleteOpen}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setIsDeleteOpen(false)}
-        >
-          <Pressable 
-            style={styles.modalOverlay} 
-            onPress={() => !isDeleteLoading && setIsDeleteOpen(false)}
-          >
-            <Pressable style={styles.modalContainer} onPress={(e) => e.stopPropagation()}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Delete Entry</Text>
-                <TouchableOpacity 
-                  onPress={() => setIsDeleteOpen(false)}
-                  disabled={isDeleteLoading}
-                >
-                  <Text style={styles.modalClose}>×</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.modalDeleteMsg}>
-                Are you sure you want to delete this entry? This action cannot be undone.
-              </Text>
-
-              <View style={styles.modalFooter}>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => setIsDeleteOpen(false)}
-                  disabled={isDeleteLoading}
-                >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.modalDeleteBtn,
-                    isDeleteLoading && styles.modalBtnDisabled
-                  ]}
-                  onPress={handleConfirmDelete}
-                  disabled={isDeleteLoading}
-                >
-                  {isDeleteLoading ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <Text style={styles.modalDeleteText}>Delete</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </Pressable>
-          </Pressable>
-        </Modal>
+        {/* ── Custom Alert ── */}
+        <CustomAlert
+          visible={alertConfig.visible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          onConfirm={alertConfig.onConfirm}
+          onCancel={alertConfig.onCancel}
+          confirmText={alertConfig.confirmText}
+          confirmColor={alertConfig.confirmColor}
+          isLoading={isDeleteLoading && !!deletingId && alertConfig.title.toLowerCase().includes('delete')}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

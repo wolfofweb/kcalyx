@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import useStore from '@/store/useStore';
 import { supabase } from '@/services/supabase';
+import CustomAlert from '@/components/CustomAlert';
 
 // ─────────────────────────────────────────────
 // Theme
@@ -173,7 +174,7 @@ function SettingRow({
 }
 
 /** Google Fit connection button */
-function GoogleFitButton({ connected }: { connected: boolean }) {
+function GoogleFitButton({ connected, onShowInfo }: { connected: boolean; onShowInfo: (connected: boolean) => void }) {
   return (
     <TouchableOpacity
       style={[
@@ -181,17 +182,9 @@ function GoogleFitButton({ connected }: { connected: boolean }) {
         connected && styles.googleFitBtnConnected,
       ]}
       activeOpacity={0.8}
-      onPress={() =>
-        Alert.alert(
-          connected ? 'Disconnect Google Fit?' : 'Connect Google Fit',
-          connected
-            ? 'This will remove access to your fitness data.'
-            : 'Google Fit integration coming soon. Stay tuned!',
-          [{ text: 'OK' }]
-        )
-      }
+      onPress={() => onShowInfo(connected)}
     >
-      {/* Google "G" logo placeholder */}
+      {/* ... */}
       <View style={styles.googleLogoWrap}>
         <Text style={styles.googleLogoText}>G</Text>
       </View>
@@ -241,19 +234,44 @@ export default function ProfileScreen() {
 
   const [localGoal, setLocalGoal] = useState(goalCalories.toString());
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+    confirmColor?: string;
+  }>({ visible: false, title: '', message: '', onConfirm: () => {} });
 
-  const handleSignOut = async () => {
-    Alert.alert('Sign out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: async () => {
+  const handleSignOut = () => {
+    setAlertConfig({
+      visible: true,
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      confirmText: 'Sign Out',
+      confirmColor: C.rose,
+      onConfirm: async () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        setIsLoggingOut(true);
+        try {
           await supabase.auth.signOut();
           setUser(null);
-        },
+        } catch (err) {
+          console.error('Sign out failed:', err);
+          setAlertConfig({
+            visible: true,
+            title: 'Error',
+            message: 'Failed to sign out. Please try again.',
+            onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false })),
+          });
+        } finally {
+          setIsLoggingOut(false);
+        }
       },
-    ]);
+      onCancel: () => setAlertConfig(prev => ({ ...prev, visible: false })),
+    });
   };
 
   // Convert display values when unit switches
@@ -282,13 +300,24 @@ export default function ProfileScreen() {
   const handleSaveGoal = async () => {
     const val = parseInt(localGoal);
     if (isNaN(val) || val <= 0) {
-      Alert.alert('Invalid Goal', 'Please enter a valid numeric calorie goal.');
+      setAlertConfig({
+        visible: true,
+        title: 'Invalid Goal',
+        message: 'Please enter a valid numeric calorie goal.',
+        onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false })),
+      });
       return;
     }
     setIsSaving(true);
     await setGoalCalories(val);
     setIsSaving(false);
-    Alert.alert('Success', 'Calorie goal updated!');
+    setAlertConfig({
+      visible: true,
+      title: 'Success',
+      message: 'Calorie goal updated!',
+      confirmColor: C.accent,
+      onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false })),
+    });
   };
 
   return (
@@ -356,7 +385,17 @@ export default function ProfileScreen() {
         {/* ── Integrations ── */}
         <SectionLabel label="INTEGRATIONS" />
         <View style={styles.card}>
-          <GoogleFitButton connected={googleFitConnected} />
+          <GoogleFitButton 
+            connected={googleFitConnected} 
+            onShowInfo={(connected) => setAlertConfig({
+              visible: true,
+              title: connected ? 'Disconnect Google Fit?' : 'Connect Google Fit',
+              message: connected
+                ? 'This will remove access to your fitness data.'
+                : 'Google Fit integration coming soon. Stay tuned!',
+              onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false })),
+            })}
+          />
         </View>
 
         {/* ── Goals ── */}
@@ -415,25 +454,45 @@ export default function ProfileScreen() {
           <SettingRow
             icon="📤"
             label="Export data"
-            onPress={() => Alert.alert('Export', 'CSV export coming soon.')}
+            onPress={() => setAlertConfig({
+              visible: true,
+              title: 'Export',
+              message: 'CSV export coming soon.',
+              onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false })),
+            })}
           />
           <Divider />
           <SettingRow
             icon="🔒"
             label="Privacy & data"
-            onPress={() => Alert.alert('Privacy', 'Privacy settings coming soon.')}
+            onPress={() => setAlertConfig({
+              visible: true,
+              title: 'Privacy',
+              message: 'Privacy settings coming soon.',
+              onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false })),
+            })}
           />
           <Divider />
           <SettingRow
             icon="🚪"
-            label="Sign out"
+            label={isLoggingOut ? 'Signing out...' : 'Sign out'}
             accent={C.rose}
-            onPress={handleSignOut}
+            onPress={isLoggingOut ? undefined : handleSignOut}
           />
         </View>
 
         <Text style={styles.versionText}>Kcalyx v1.0.0 · Made with ❤️</Text>
       </ScrollView>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+        confirmText={alertConfig.confirmText}
+        confirmColor={alertConfig.confirmColor}
+      />
     </SafeAreaView>
   );
 }

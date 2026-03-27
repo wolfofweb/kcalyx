@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import useStore from '../store/useStore';
 import { supabase } from '../services/supabase';
+import CustomAlert from '../components/CustomAlert';
 
 const C = {
   bg: '#0A0B0D',
@@ -68,6 +69,12 @@ export default function OnboardingScreen() {
   const [weight, setWeight] = useState('');
   const [targetWeight, setTargetWeight] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    onCancel?: () => void;
+  }>({ visible: false, title: '', message: '' });
 
   const setHasOnboarded = useStore((s: any) => s.setHasOnboarded);
   const setBodyMetrics = useStore((s: any) => s.setBodyMetrics);
@@ -77,7 +84,13 @@ export default function OnboardingScreen() {
 
   const handleContinue = async () => {
     if (!isValid) {
-      if (!isSubmitting) Alert.alert('Missing Info', 'Please fill in all three fields to continue.');
+      if (!isSubmitting) {
+        setAlertConfig({
+          visible: true,
+          title: 'Missing Info',
+          message: 'Please fill in all three fields to continue.',
+        });
+      }
       return;
     }
 
@@ -100,7 +113,11 @@ export default function OnboardingScreen() {
       await setHasOnboarded(true);
     } catch (err: any) {
       console.error('Onboarding save failed:', err);
-      Alert.alert('Error', 'Failed to save your profile. Please try again.');
+      setAlertConfig({
+        visible: true,
+        title: 'Error',
+        message: 'Failed to save your profile. Please try again.',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -181,6 +198,15 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onConfirm={() => setAlertConfig({ ...alertConfig, visible: false })}
+        onCancel={alertConfig.onCancel}
+        confirmText="OK"
+      />
     </SafeAreaView>
   );
 }
