@@ -212,10 +212,12 @@ function CalorieMeter({
   return (
     <View style={styles.meterCard}>
       {/* Glow ring */}
-      <View style={styles.meterRingOuter}>
-        <View style={styles.meterRingInner}>
-          <Text style={styles.meterCalNumber}>{total.toLocaleString()}</Text>
-          <Text style={styles.meterCalLabel}>kcal today</Text>
+      <View style={styles.meterGlow}>
+        <View style={styles.meterRingOuter}>
+          <View style={styles.meterRingInner}>
+            <Text style={styles.meterCalNumber}>{total.toLocaleString()}</Text>
+            <Text style={styles.meterCalLabel}>kcal today</Text>
+          </View>
         </View>
       </View>
 
@@ -1062,6 +1064,17 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     marginBottom: 16,
   },
+  meterGlow: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(110, 231, 183, 0.05)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "rgba(110, 231, 183, 0.08)",
+  },
   meterRingOuter: {
     width: 148,
     height: 148,
@@ -1070,13 +1083,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.accentDim,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
-    // subtle glow via shadow
+    // subtle accent on web
     shadowColor: COLORS.accent,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 4,
   },
   meterRingInner: {
     alignItems: "center",
