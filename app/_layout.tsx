@@ -11,6 +11,7 @@ import useStore from '@/store/useStore';
 import { supabase } from '@/services/supabase';
 import LoginScreen from '@/app/login';
 import OnboardingScreen from '@/app/onboarding';
+import ConnectAIScreen from '@/app/connect-ai';
 
 const { width } = Dimensions.get('window');
 
@@ -85,8 +86,10 @@ export default function RootLayout() {
   const [isSplashDone, setIsSplashDone] = useState(false);
 
   useEffect(() => {
-    // 1. Load persisted onboarding state
     loadOnboardingState().catch(console.error);
+
+    // 1.1 Load persisted API key
+    useStore.getState().loadApiKey().catch(console.error);
 
     // 2. Check for existing session
     supabase.auth.getSession().then(({ data }) => {
@@ -122,11 +125,15 @@ export default function RootLayout() {
       fetchEntries().catch(console.error);
       fetchWeeklyData().catch(console.error);
       loadGoalCalories().catch(console.error);
+      useStore.getState().loadApiKey().catch(console.error);
     }
   }, [user]);
 
+  const apiKey = useStore((s: any) => s.apiKey);
+  const isApiKeyLoading = useStore((s: any) => s.isApiKeyLoading);
+
   // Combined readiness check
-  const isDataReady = !isLoading && (!user || !isProfileLoading);
+  const isDataReady = !isLoading && (!user || (!isProfileLoading && !isApiKeyLoading));
 
   if (!isSplashDone) {
     return (
@@ -148,11 +155,17 @@ export default function RootLayout() {
           <OnboardingScreen />
           <StatusBar style="light" />
         </>
+      ) : !apiKey ? (
+        <>
+          <ConnectAIScreen />
+          <StatusBar style="light" />
+        </>
       ) : (
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen name="connect-ai" options={{ headerShown: false }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

@@ -1,19 +1,16 @@
-const OPENROUTER_API_KEY = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
+import useStore from "../store/useStore";
+
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 /**
  * Helper to parse AI response with fallback cleaning.
- * @param {string} text
- * @returns {any|null} Parsed object or null if failed.
  */
 function attemptParse(text) {
   if (!text || typeof text !== "string") return null;
 
   try {
-    console.log("DEBUG: Attempting direct JSON parse...");
     return JSON.parse(text);
   } catch (directError) {
-    console.log("DEBUG: Direct parse failed. Attempting to strip markdown fences...");
     const cleaned = text
       .trim()
       .replace(/^```(?:json)?\s*/i, "")
@@ -23,7 +20,6 @@ function attemptParse(text) {
     try {
       return JSON.parse(cleaned);
     } catch (cleanError) {
-      console.error("DEBUG: Both direct and cleaned parsing failed.");
       return null;
     }
   }
@@ -31,14 +27,12 @@ function attemptParse(text) {
 
 /**
  * Performs the actual fetch call to OpenRouter.
- * @param {string} userInput
- * @returns {Promise<string>} Raw message content string.
  */
-async function fetchFromAI(userInput) {
+async function fetchFromAI(userInput, apiKey) {
   const response = await fetch(OPENROUTER_API_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -47,28 +41,8 @@ async function fetchFromAI(userInput) {
         {
           role: "system",
           content: `You must return ONLY a JSON array.
-
-Each item must include:
-- name (string)
-- quantity (number)
-- unit (string)
-- calories (number)
-- protein (number)
-- carbs (number)
-- fat (number)
-
-Rules:
-- Do NOT return text other than the JSON array.
-- Do NOT summarize.
-- Do NOT combine multiple items into one.
-- Convert plural names to singular (e.g., "eggs" to "egg").
-- Infer logical units (piece, bowl, cup, serving, etc.) if not specified.
-- Estimate realistic nutrition values.
-
-Example:
-[
-  { "name": "egg", "quantity": 3, "unit": "pcs", "calories": 210, "protein": 18, "carbs": 2, "fat": 15 }
-]`,
+Each item must include: name, quantity, unit, calories, protein, carbs, fat.
+Rules: No conversational text, no summary, singular names, estimate realistic values.`,
         },
         {
           role: "user",
@@ -80,8 +54,7 @@ Example:
 
   if (!response.ok) {
     const errorBody = await response.text();
-    console.error(`OpenRouter API error (${response.status}):`, errorBody);
-    throw new Error(`OpenRouter API request failed: ${response.status}`);
+    throw new Error(`AI request failed (${response.status}): ${errorBody}`);
   }
 
   const data = await response.json();
@@ -89,15 +62,15 @@ Example:
 }
 
 /**
- * Parses a natural language food input string using the OpenRouter API with retry logic.
- *
- * @param {string} userInput - A natural language description of food items.
- * @returns {Promise<Array<{ name: string, quantity: number, unit: string, calories: number, protein: number, carbs: number, fat: number }>>} Structured food items.
+ * Parses a natural language food input string using the OpenRouter API.
+ * @param {string} userInput 
+ * @param {string} [providedApiKey] - Optional, will fallback to store if not provided
  */
-export async function parseFoodWithAI(userInput) {
-  if (!OPENROUTER_API_KEY) {
-    console.warn("DEBUG: OpenRouter API key is missing.");
-    return [];
+export async function parseFoodWithAI(userInput, providedApiKey) {
+  const apiKey = providedApiKey || useStore.getState().apiKey;
+
+  if (!apiKey) {
+    throw new Error("API key not found. Please connect your AI key in settings.");
   }
 
   if (!userInput || typeof userInput !== "string" || !userInput.trim()) {
@@ -109,15 +82,10 @@ export async function parseFoodWithAI(userInput) {
 
   while (attempts <= MAX_RETRIES) {
     try {
-      console.log(`DEBUG: AI Parse Attempt ${attempts + 1}/${MAX_RETRIES + 1}`);
-
-      const rawContent = await fetchFromAI(userInput);
-      console.log("DEBUG: Received raw content from AI:", rawContent);
-
+      const rawContent = await fetchFromAI(userInput, apiKey);
       const parsed = attemptParse(rawContent);
 
       if (parsed && Array.isArray(parsed) && parsed.length > 0) {
-        console.log("DEBUG: Successfully parsed food items:", parsed.length);
         return parsed.map((item) => ({
           name: String(item.name || "unknown").toLowerCase().trim(),
           quantity: Number(item.quantity) || 1,
@@ -128,18 +96,13 @@ export async function parseFoodWithAI(userInput) {
           fat: Number(item.fat) || 0,
         }));
       }
-
-      console.warn("DEBUG: Result was not a valid non-empty JSON array. Rejecting and retrying...");
     } catch (err) {
-      console.error(`DEBUG: Attempt ${attempts + 1} failed with error:`, err.message);
+      console.error(`AI Attempt ${attempts + 1} failed:`, err.message);
+      if (attempts === MAX_RETRIES) throw err;
     }
 
     attempts++;
-    if (attempts <= MAX_RETRIES) {
-      console.log("DEBUG: Retrying API call...");
-    }
   }
 
-  console.error("DEBUG: All AI parse attempts failed. Falling back to empty array.");
   return [];
 }

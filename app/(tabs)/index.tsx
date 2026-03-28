@@ -211,12 +211,14 @@ function CalorieMeter({
 
   return (
     <View style={styles.meterCard}>
-      {/* Glow ring */}
-      <View style={styles.meterGlow}>
-        <View style={styles.meterRingOuter}>
-          <View style={styles.meterRingInner}>
-            <Text style={styles.meterCalNumber}>{total.toLocaleString()}</Text>
-            <Text style={styles.meterCalLabel}>kcal today</Text>
+      {/* Multi-layered glow for Android/Web consistency */}
+      <View style={styles.meterGlowOuter}>
+        <View style={styles.meterGlowInner}>
+          <View style={styles.meterRingOuter}>
+            <View style={styles.meterRingInner}>
+              <Text style={styles.meterCalNumber}>{total.toLocaleString()}</Text>
+              <Text style={styles.meterCalLabel}>kcal today</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -1061,19 +1063,24 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: COLORS.border,
     marginBottom: 16,
   },
-  meterGlow: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: "rgba(110, 231, 183, 0.05)",
+  meterGlowOuter: {
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: "rgba(110, 231, 183, 0.03)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "rgba(110, 231, 183, 0.08)",
+  },
+  meterGlowInner: {
+    width: 178,
+    height: 178,
+    borderRadius: 89,
+    backgroundColor: "rgba(110, 231, 183, 0.08)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   meterRingOuter: {
     width: 148,
@@ -1081,13 +1088,14 @@ const styles = StyleSheet.create({
     borderRadius: 74,
     borderWidth: 3,
     borderColor: COLORS.accentDim,
+    backgroundColor: COLORS.bg, // Important for shadow contrast
     alignItems: "center",
     justifyContent: "center",
-    // subtle accent on web
+    // Premium glow shadow for Web/iOS
     shadowColor: COLORS.accent,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 15,
+    shadowOpacity: 0.4,
+    shadowRadius: 25,
     elevation: 4,
   },
   meterRingInner: {

@@ -26,9 +26,35 @@ const useStore = create((set) => ({
   // ── Auth state ────────────────────────────────────────────
   user: null,
   isLoading: true,
+  apiKey: null,
+  isApiKeyLoading: true,
 
   setUser: (user) => set({ user }),
   setLoading: (isLoading) => set({ isLoading }),
+  setApiKey: async (key) => {
+    set({ apiKey: key });
+    if (key) {
+      await AsyncStorage.setItem('openrouter_api_key', key);
+    } else {
+      await AsyncStorage.removeItem('openrouter_api_key');
+    }
+  },
+  loadApiKey: async () => {
+    try {
+      const userId = useStore.getState().user?.id;
+      if (!userId) {
+        set({ isApiKeyLoading: false });
+        return;
+      }
+
+      const { getApiKey } = require('../services/apiEncryption');
+      const key = await getApiKey(userId);
+      set({ apiKey: key, isApiKeyLoading: false });
+    } catch (e) {
+      console.error('Failed to load API key', e);
+      set({ isApiKeyLoading: false });
+    }
+  },
 
   // ── Onboarding state ──────────────────────────────────────
   hasOnboarded: false,
