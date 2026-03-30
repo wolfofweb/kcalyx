@@ -9,11 +9,14 @@ import {
   TextInput,
   Switch,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import useStore from '@/store/useStore';
 import { supabase } from '@/services/supabase';
 import CustomAlert from '@/components/CustomAlert';
+import { useRouter } from 'expo-router';
+import { saveApiKey } from '@/services/apiEncryption';
 
 // ─────────────────────────────────────────────
 // Theme
@@ -221,6 +224,9 @@ export default function ProfileScreen() {
   const storeHeight = useStore((state: any) => state.height);
   const storeWeight = useStore((state: any) => state.weight);
   const storeTargetWeight = useStore((state: any) => state.targetWeight);
+  const apiKey = useStore((state: any) => state.apiKey);
+  const setApiKey = useStore((state: any) => state.setApiKey);
+  const router = useRouter();
 
   const [isKg, setIsKg] = useState(true);
   const [currentWeight, setCurrentWeight] = useState(storeWeight || '76.5');
@@ -317,6 +323,29 @@ export default function ProfileScreen() {
       message: 'Calorie goal updated!',
       confirmColor: C.accent,
       onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false })),
+    });
+  };
+
+  const handleRemoveKey = () => {
+    setAlertConfig({
+      visible: true,
+      title: 'Remove API Key?',
+      message: 'This will disable AI tracking and return you to the setup screen.',
+      confirmText: 'Remove',
+      confirmColor: C.rose,
+      onConfirm: async () => {
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+        try {
+          if (user?.id) {
+            await saveApiKey(user.id, null);
+            await setApiKey(null);
+            // Layout level will handle the redirect naturally as apiKey is now null
+          }
+        } catch (err) {
+          console.error('Failed to remove key:', err);
+        }
+      },
+      onCancel: () => setAlertConfig(prev => ({ ...prev, visible: false })),
     });
   };
 
@@ -446,6 +475,49 @@ export default function ProfileScreen() {
           <SettingRow icon="🔔" label="Reminders" value="On" />
           <Divider />
           <SettingRow icon="🌏" label="Language" value="English" />
+        </View>
+
+        {/* ── AI Connection ── */}
+        <SectionLabel label="AI CONNECTION" />
+        <View style={styles.card}>
+          <View style={styles.aiRow}>
+            <View style={styles.aiRowLeft}>
+              <View style={[styles.settingIconWrap, { backgroundColor: C.accentDim }]}>
+                <Text style={[styles.settingIcon, { color: C.accent }]}>✨</Text>
+              </View>
+              <View>
+                <Text style={styles.settingLabel}>OpenRouter AI</Text>
+                <Text style={styles.aiKeyText}>
+                  {apiKey ? `•••• •••• •••• ${apiKey.slice(-4)}` : 'Not Connected'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.aiBadge}>
+              <Text style={styles.aiBadgeText}>{apiKey ? 'Connected' : 'Offline'}</Text>
+            </View>
+          </View>
+          
+          <View style={styles.aiActions}>
+            <TouchableOpacity 
+              style={styles.aiActionBtn} 
+              onPress={() => router.push('/connect-ai')}
+            >
+              <Text style={styles.aiActionText}>Change Key</Text>
+            </TouchableOpacity>
+            <View style={styles.aiActionDivider} />
+            <TouchableOpacity 
+              style={styles.aiActionBtn} 
+              onPress={handleRemoveKey}
+            >
+              <Text style={[styles.aiActionText, { color: C.rose }]}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.aiFooter}>
+            <Text style={styles.aiFooterText}>
+              Your key is stored securely and used only for AI processing.
+            </Text>
+          </View>
         </View>
 
         {/* ── Account ── */}
@@ -798,15 +870,78 @@ const styles = StyleSheet.create({
     backgroundColor: C.accent,
     marginHorizontal: 16,
     marginBottom: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   saveBtnText: {
-    color: C.bg,
-    fontWeight: '800',
-    fontSize: 14,
-    letterSpacing: 0.5,
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  // AI Connection
+  aiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  aiRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  aiKeyText: {
+    fontSize: 12,
+    color: C.textMuted,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    marginTop: 2,
+  },
+  aiBadge: {
+    backgroundColor: C.accentDim,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: C.accent + '30',
+  },
+  aiBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: C.accent,
     textTransform: 'uppercase',
+  },
+  aiActions: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: C.border,
+  },
+  aiActionBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: C.text,
+  },
+  aiActionDivider: {
+    width: 1,
+    backgroundColor: C.border,
+  },
+  aiFooter: {
+    padding: 16,
+    backgroundColor: C.bg + '50',
+  },
+  aiFooterText: {
+    fontSize: 12,
+    color: C.textMuted,
+    lineHeight: 18,
+    textAlign: 'center',
   },
 });

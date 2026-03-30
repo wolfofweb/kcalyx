@@ -25,15 +25,15 @@ export const decryptKey = (ciphertext) => {
 };
 
 /**
- * Saves the encrypted API key to the user's Supabase profile.
+ * Saves (or removes) the encrypted API key to the user's Supabase profile.
  * @param {string} userId - The Supabase user ID.
- * @param {string} apiKey - The raw API key to encrypt and save.
+ * @param {string|null} apiKey - The raw API key to encrypt and save, or null to remove.
  */
 export const saveApiKey = async (userId, apiKey) => {
-  if (!userId || !apiKey) return { error: 'Missing userId or apiKey' };
+  if (!userId) return { error: 'Missing userId' };
 
   try {
-    const encrypted = encryptKey(apiKey);
+    const encrypted = apiKey ? encryptKey(apiKey) : null;
     const { data, error } = await supabase
       .from('profiles')
       .update({ openrouter_key: encrypted })
@@ -43,7 +43,7 @@ export const saveApiKey = async (userId, apiKey) => {
     return { success: true };
   } catch (err) {
     console.error('Error saving API key:', err);
-    return { error: err.message };
+    return { error: err.message || 'Unknown error saving key' };
   }
 };
 
