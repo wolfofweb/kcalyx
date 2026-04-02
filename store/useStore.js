@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
+import dayjs from 'dayjs';
 
 /**
  * useStore — global Zustand store for Kcalyx
@@ -28,6 +29,8 @@ const useStore = create((set) => ({
   isLoading: true,
   apiKey: null,
   isApiKeyLoading: true,
+  isWeeklyLoading: false,
+  weeklyError: null,
 
   setUser: (user) => set({ user }),
   setLoading: (isLoading) => set({ isLoading }),
@@ -169,6 +172,12 @@ const useStore = create((set) => ({
   trendMessage: "",
   trendStatus: "neutral",
   streak: 0,
+  statsToday: {
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0
+  },
 
   /**
    * setSelectedDate(date)
@@ -177,97 +186,140 @@ const useStore = create((set) => ({
   setSelectedDate: async (date) => {
     set({ selectedDate: date });
     await useStore.getState().fetchEntries();
+    // We don't refresh weekly data here because Dashboard stays on 'today'
   },
 
   /**
-   * fetchWeeklyData()
-   * Aggregates total calories for the last 7 days from Supabase.
+   * fetchWeeklyData(userId, referenceDate)
+   * Aggregates total calories for the 7 days ending at referenceDate.
    */
-  fetchWeeklyData: async () => {
+  fetchWeeklyData: async (passedUserId, passedReferenceDate) => {
+    const userId = passedUserId || useStore.getState().user?.id;
+    // For Dashboard, we almost always want this focused on current date
+    const referenceDate = passedReferenceDate || dayjs().format('YYYY-MM-DD');
+
+    if (!userId) return;
+
+    set({ isWeeklyLoading: true, weeklyError: null });
+
     try {
-      const now = new Date();
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(now.getDate() - 6); // 7 days including today
-      const startDate = sevenDaysAgo.toISOString().split('T')[0];
-      const userId = useStore.getState().user?.id;
+      const endDate = dayjs(referenceDate);
+      const startDate = endDate.subtract(6, 'day').format('YYYY-MM-DD');
+      const endDateStr = endDate.format('YYYY-MM-DD');
 
       const { data, error } = await supabase
         .from('entries')
         .select('entry_date, total_calories')
         .gte('entry_date', startDate)
+        .lte('entry_date', endDateStr)
         .eq('is_deleted', false)
         .eq('user_id', userId);
 
       if (error) throw error;
 
-      if (data) {
-        // ... grouping logic ...
-        const grouped = data.reduce((acc, curr) => {
-          const date = curr.entry_date;
-          acc[date] = (acc[date] || 0) + (Number(curr.total_calories) || 0);
-          return acc;
-        }, {});
+      // Grouping and Normalization
+      const grouped = (data || []).reduce((acc, curr) => {
+        const dateKey = dayjs(curr.entry_date).format('YYYY-MM-DD');
+        acc[dateKey] = (acc[dateKey] || 0) + (parseFloat(curr.total_calories) || 0);
+        return acc;
+      }, {});
 
-        const last7Days = [];
-        let weeklyTotalCalories = 0;
-        let daysTracked = 0;
+      const last7Days = [];
+      let weeklyTotalCalories = 0;
+      let daysTracked = 0;
 
-        for (let i = 0; i < 7; i++) {
-          const d = new Date();
-          d.setDate(now.getDate() - (6 - i));
-          const dateStr = d.toISOString().split('T')[0];
-          const cals = grouped[dateStr] || 0;
-          
-          last7Days.push({
-            date: dateStr,
-            dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
-            calories: cals
-          });
-
-          weeklyTotalCalories += cals;
-          if (cals > 0) daysTracked++;
-        }
-
-        const last3Avg = (last7Days[4].calories + last7Days[5].calories + last7Days[6].calories) / 3;
-        const prev3Avg = (last7Days[1].calories + last7Days[2].calories + last7Days[3].calories) / 3;
+      const baseDate = dayjs(startDate);
+      for (let i = 0; i < 7; i++) {
+        const d = baseDate.add(i, 'day');
+        const dateStr = d.format('YYYY-MM-DD');
+        const cals = Math.max(grouped[dateStr] || 0, 0); 
         
-        let trendMessage = "";
-        let trendStatus = "neutral";
-        
-        if (last3Avg < prev3Avg - 50) {
-          trendMessage = "You are improving 🔥";
-          trendStatus = "improving";
-        } else if (last3Avg > prev3Avg + 50) {
-          trendMessage = "Watch your intake";
-          trendStatus = "warning";
-        } else {
-          trendMessage = "Your intake is stable";
-          trendStatus = "neutral";
-        }
-
-        let streak = 0;
-        for (let i = 6; i >= 0; i--) {
-          if (last7Days[i].calories > 0) {
-            streak++;
-          } else {
-            if (i === 6) continue; 
-            break;
-          }
-        }
-
-        set({ 
-          weeklyData: last7Days,
-          weeklyTotalCalories,
-          avgCaloriesPerDay: Math.round(weeklyTotalCalories / 7),
-          daysTracked,
-          trendMessage,
-          trendStatus,
-          streak
+        last7Days.push({
+          date: dateStr,
+          day: d.format('ddd'), 
+          calories: Math.round(cals)
         });
+
+        weeklyTotalCalories += cals;
+        if (cals > 0) daysTracked++;
       }
+
+      // Trend Calculation
+      const last3Avg = (last7Days[4].calories + last7Days[5].calories + last7Days[6].calories) / 3;
+      const prev3Avg = (last7Days[1].calories + last7Days[2].calories + last7Days[3].calories) / 3;
+      
+      let trendMessage = "Your intake is stable";
+      let trendStatus = "neutral";
+      if (last3Avg < prev3Avg - 50) {
+        trendMessage = "You are improving 🔥";
+        trendStatus = "improving";
+      } else if (last3Avg > prev3Avg + 50) {
+        trendMessage = "Watch your intake";
+        trendStatus = "warning";
+      }
+
+      let streak = 0;
+      for (let i = 6; i >= 0; i--) {
+        if (last7Days[i].calories > 0) streak++;
+        else if (i !== 6) break;
+      }
+
+      set({ 
+        weeklyData: last7Days,
+        weeklyTotalCalories,
+        avgCaloriesPerDay: Math.round(weeklyTotalCalories / 7),
+        daysTracked,
+        trendMessage,
+        trendStatus,
+        streak,
+        isWeeklyLoading: false
+      });
     } catch (err) {
       console.error('Weekly fetch failed:', err);
-      throw err;
+      set({ weeklyError: err.message, isWeeklyLoading: false });
+    }
+  },
+
+  /**
+   * fetchTodayStats()
+   * Specifically fetches data for 'today' regardless of selectedDate.
+   */
+  fetchTodayStats: async () => {
+    const userId = useStore.getState().user?.id;
+    if (!userId) return;
+
+    const today = dayjs().format('YYYY-MM-DD');
+    try {
+      const { data, error } = await supabase
+        .from('entries')
+        .select('items')
+        .eq('entry_date', today)
+        .eq('is_deleted', false)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+      data?.forEach(entry => {
+        entry.items?.forEach(item => {
+          totals.calories += (parseFloat(item.calories) || 0);
+          totals.protein += (parseFloat(item.protein) || 0);
+          totals.carbs += (parseFloat(item.carbs) || 0);
+          totals.fat += (parseFloat(item.fat) || 0);
+        });
+      });
+
+      // Cap at 2 decimal places to avoid float precision issues
+      const roundedTotals = {
+        calories: Math.round(totals.calories),
+        protein: Number(totals.protein.toFixed(2)),
+        carbs: Number(totals.carbs.toFixed(2)),
+        fat: Number(totals.fat.toFixed(2)),
+      };
+
+      set({ statsToday: roundedTotals });
+    } catch (err) {
+      console.error('Today stats fetch failed:', err);
     }
   },
 
@@ -386,7 +438,7 @@ const useStore = create((set) => ({
  * Helper to sum all macros from all items in all entries.
  */
 function calculateAllTotals(entries) {
-  return entries.reduce(
+  const totals = entries.reduce(
     (acc, entry) => {
       entry.items?.forEach((item) => {
         acc.totalCalories += (Number(item.calories) || 0);
@@ -398,6 +450,13 @@ function calculateAllTotals(entries) {
     },
     { totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0 }
   );
+
+  return {
+    totalCalories: Math.round(totals.totalCalories),
+    totalProtein: Number(totals.totalProtein.toFixed(2)),
+    totalCarbs: Number(totals.totalCarbs.toFixed(2)),
+    totalFat: Number(totals.totalFat.toFixed(2)),
+  };
 }
 
 export default useStore;

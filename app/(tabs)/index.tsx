@@ -21,6 +21,7 @@ import { supabase } from "../../services/supabase";
 import useStore from "../../store/useStore";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import CustomAlert from "@/components/CustomAlert";
+import { THEME } from "@/constants/theme";
 
 // ──────────────────────────────────────────────
 // Types
@@ -41,23 +42,7 @@ interface Entry {
   type: "food" | "activity";
 }
 
-// ──────────────────────────────────────────────
-// Theme tokens
-// ──────────────────────────────────────────────
-const COLORS = {
-  bg: "#0A0B0D",
-  surface: "#13151A",
-  surfaceElevated: "#1C1F27",
-  border: "#242830",
-  accent: "#6EE7B7", // mint green
-  accentDim: "#1A3B30",
-  accentSecondary: "#818CF8", // soft indigo
-  text: "#F1F5F9",
-  textMuted: "#64748B",
-  textSubtle: "#94A3B8",
-  danger: "#F87171",
-  dangerDim: "#2D1515",
-};
+
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -230,7 +215,7 @@ function CalorieMeter({
             styles.progressFill,
             {
               width: `${pct * 100}%` as any,
-              backgroundColor: isOver ? COLORS.danger : COLORS.accent,
+              backgroundColor: isOver ? THEME.danger : THEME.accent,
             },
           ]}
         />
@@ -243,7 +228,7 @@ function CalorieMeter({
         <Text
           style={[
             styles.meterRemaining,
-            { color: isOver ? COLORS.danger : COLORS.accent },
+            { color: isOver ? THEME.danger : THEME.accent },
           ]}
         >
           {isOver
@@ -283,7 +268,7 @@ function EntryRow({
   onEdit: (entry: Entry) => void;
 }) {
   const isActivity = item.type === "activity";
-  const accentColor = isActivity ? COLORS.accent : COLORS.accentSecondary;
+  const accentColor = isActivity ? THEME.accent : THEME.accentSecondary;
   const totalCals = item.items?.reduce((sum, i) => sum + i.calories, 0) ?? 0;
 
   return (
@@ -293,7 +278,7 @@ function EntryRow({
         <View
           style={[
             styles.entryIcon,
-            { backgroundColor: isActivity ? COLORS.accentDim : "#1A1F35" },
+            { backgroundColor: isActivity ? THEME.accentDim : "#1A1F35" },
           ]}
         >
           <Text style={{ fontSize: 16 }}>{isActivity ? "🏃" : "🍽️"}</Text>
@@ -320,7 +305,7 @@ function EntryRow({
             style={styles.actionBtn}
             hitSlop={{ top: 20, bottom: 20, left: 20, right: 10 }}
           >
-            <IconSymbol name="pencil" size={16} color={COLORS.textSubtle} />
+            <IconSymbol name="pencil" size={16} color={THEME.textSubtle} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {
@@ -402,6 +387,8 @@ export default function HomeScreen() {
   const totalCarbs = useStore((s) => s.totalCarbs);
   const updateEntry = useStore((s: any) => s.updateEntry);
   const fetchEntries = useStore((s: any) => s.fetchEntries);
+  const fetchWeeklyData = useStore((s: any) => s.fetchWeeklyData);
+  const fetchTodayStats = useStore((s: any) => s.fetchTodayStats);
   const loadGoalCalories = useStore((s: any) => s.loadGoalCalories);
   const goalCalories = useStore((s: any) => s.goalCalories);
   const removeEntry = useStore((s) => s.removeEntry);
@@ -527,7 +514,11 @@ export default function HomeScreen() {
       };
       
       // Better to fetch entries from Supabase to get real ID and updated list
-      await fetchEntries();
+      await Promise.all([
+        fetchEntries(),
+        fetchWeeklyData(),
+        fetchTodayStats()
+      ]);
       setInputText("");
     } catch (err: any) {
       console.error("Add failed:", err);
@@ -546,7 +537,7 @@ export default function HomeScreen() {
       title: "Delete Entry",
       message: "Are you sure you want to delete this entry? This action cannot be undone.",
       confirmText: "Delete",
-      confirmColor: COLORS.danger,
+      confirmColor: THEME.danger,
       onConfirm: () => handleConfirmDelete(id),
       onCancel: () => setAlertConfig(prev => ({ ...prev, visible: false })),
     });
@@ -562,7 +553,11 @@ export default function HomeScreen() {
 
       if (dbError) throw dbError;
 
-      await fetchEntries();
+      await Promise.all([
+        fetchEntries(),
+        fetchWeeklyData(),
+        fetchTodayStats()
+      ]);
       setAlertConfig(prev => ({ ...prev, visible: false }));
     } catch (err) {
       console.error("Delete failed:", err);
@@ -618,7 +613,11 @@ export default function HomeScreen() {
       if (dbError) throw new Error("Update failed, please try again");
 
       // 4. Update local state (Option A: Fetch Entries)
-      await fetchEntries();
+      await Promise.all([
+        fetchEntries(),
+        fetchWeeklyData(),
+        fetchTodayStats()
+      ]);
       
       setIsEditOpen(false);
       setSelectedEntry(null);
@@ -633,7 +632,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bg} />
+      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -648,9 +647,9 @@ export default function HomeScreen() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              tintColor={COLORS.accent}
-              colors={[COLORS.accent]}
-              progressBackgroundColor={COLORS.surfaceElevated}
+              tintColor={THEME.accent}
+              colors={[THEME.accent]}
+              progressBackgroundColor={THEME.surfaceElevated}
             />
           }
           ListHeaderComponent={
@@ -663,7 +662,7 @@ export default function HomeScreen() {
                   {/* Date Navigation Header */}
                   <View style={styles.dateNav}>
                     <TouchableOpacity onPress={handlePrevDay} style={styles.dateNavBtn}>
-                      <IconSymbol name="chevron.left" size={20} color={COLORS.textMuted} />
+                      <IconSymbol name="chevron.left" size={20} color={THEME.textMuted} />
                     </TouchableOpacity>
                     
                     <Text style={styles.dateLabel}>{getDateLabel()}</Text>
@@ -676,13 +675,10 @@ export default function HomeScreen() {
                       <IconSymbol 
                         name="chevron.right" 
                         size={20} 
-                        color={isToday ? COLORS.border : COLORS.textMuted} 
+                        color={isToday ? THEME.border : THEME.textMuted} 
                       />
                     </TouchableOpacity>
                   </View>
-                </View>
-                <View style={styles.avatarBadge}>
-                  <Text style={styles.avatarText}>K</Text>
                 </View>
               </View>
 
@@ -704,7 +700,7 @@ export default function HomeScreen() {
                 <TextInput
                   style={styles.textInput}
                   placeholder="e.g. 2 eggs and toast, 30 min run…"
-                  placeholderTextColor={COLORS.textMuted}
+                  placeholderTextColor={THEME.textMuted}
                   value={inputText}
                   onChangeText={setInputText}
                   multiline
@@ -798,7 +794,7 @@ export default function HomeScreen() {
                 value={editText}
                 onChangeText={setEditText}
                 placeholder="Modify your entry..."
-                placeholderTextColor={COLORS.textMuted}
+                placeholderTextColor={THEME.textMuted}
                 multiline
                 autoFocus
                 editable={!isEditLoading}
@@ -858,7 +854,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: COLORS.bg,
+    backgroundColor: THEME.bg,
   },
 
   // List
@@ -872,35 +868,35 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 16,
+    paddingTop: 24,
     paddingBottom: 24,
   },
   appName: {
     fontSize: 28,
     fontWeight: "800",
-    color: COLORS.text,
+    color: THEME.text,
     letterSpacing: -0.5,
   },
   dateNav: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 8,
     gap: 12,
   },
   dateNavBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: THEME.border,
   },
   dateLabel: {
     fontSize: 15,
     fontWeight: "700",
-    color: COLORS.text,
+    color: THEME.text,
     minWidth: 80,
     textAlign: "center",
   },
@@ -911,16 +907,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.accentDim,
+    backgroundColor: THEME.accentDim,
     borderWidth: 1.5,
-    borderColor: COLORS.accent,
+    borderColor: THEME.accent,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
     fontSize: 16,
     fontWeight: "700",
-    color: COLORS.accent,
+    color: THEME.accent,
   },
 
   // Entry Card Updates
@@ -933,15 +929,15 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: THEME.border,
   },
   deleteBtnText: {
     fontSize: 20,
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     lineHeight: 20,
     marginTop: -2,
     fontWeight: "400",
@@ -957,11 +953,11 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: "100%",
-    backgroundColor: COLORS.surface,
+    backgroundColor: THEME.surface,
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: THEME.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
@@ -976,33 +972,33 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "800",
-    color: COLORS.text,
+    color: THEME.text,
   },
   modalClose: {
     fontSize: 28,
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     lineHeight: 28,
   },
   modalInput: {
-    backgroundColor: COLORS.bg,
+    backgroundColor: THEME.bg,
     borderRadius: 16,
     padding: 16,
-    color: COLORS.text,
+    color: THEME.text,
     fontSize: 16,
     minHeight: 120,
     textAlignVertical: "top",
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: THEME.border,
     marginBottom: 20,
   },
   modalError: {
-    color: COLORS.danger,
+    color: THEME.danger,
     fontSize: 13,
     marginBottom: 16,
     textAlign: "center",
   },
   modalSaveBtn: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: THEME.accent,
     borderRadius: 14,
     height: 54,
     flex: 2,
@@ -1010,14 +1006,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modalCancelBtn: {
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     borderRadius: 14,
     height: 54,
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: THEME.border,
   },
   modalBtnDisabled: {
     opacity: 0.5,
@@ -1028,7 +1024,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   modalCancelText: {
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -1038,12 +1034,12 @@ const styles = StyleSheet.create({
   },
   modalDeleteMsg: {
     fontSize: 16,
-    color: COLORS.textSubtle,
+    color: THEME.textSubtle,
     lineHeight: 24,
     marginBottom: 24,
   },
   modalDeleteBtn: {
-    backgroundColor: COLORS.danger,
+    backgroundColor: THEME.danger,
     borderRadius: 14,
     height: 54,
     flex: 2,
@@ -1058,7 +1054,7 @@ const styles = StyleSheet.create({
 
   // Calorie Meter
   meterCard: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: THEME.surface,
     borderRadius: 24,
     padding: 24,
     alignItems: "center",
@@ -1087,12 +1083,12 @@ const styles = StyleSheet.create({
     height: 148,
     borderRadius: 74,
     borderWidth: 3,
-    borderColor: COLORS.accentDim,
-    backgroundColor: COLORS.bg, // Important for shadow contrast
+    borderColor: THEME.accentDim,
+    backgroundColor: THEME.bg, // Important for shadow contrast
     alignItems: "center",
     justifyContent: "center",
     // Premium glow shadow for Web/iOS
-    shadowColor: COLORS.accent,
+    shadowColor: THEME.accent,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
     shadowRadius: 25,
@@ -1104,12 +1100,12 @@ const styles = StyleSheet.create({
   meterCalNumber: {
     fontSize: 34,
     fontWeight: "800",
-    color: COLORS.text,
+    color: THEME.text,
     letterSpacing: -1,
   },
   meterCalLabel: {
     fontSize: 12,
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     fontWeight: "500",
     letterSpacing: 0.5,
     textTransform: "uppercase",
@@ -1118,7 +1114,7 @@ const styles = StyleSheet.create({
   progressTrack: {
     width: "100%",
     height: 6,
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     borderRadius: 3,
     overflow: "hidden",
     marginBottom: 12,
@@ -1134,7 +1130,7 @@ const styles = StyleSheet.create({
   },
   meterGoalText: {
     fontSize: 13,
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
   },
   meterRemaining: {
     fontSize: 13,
@@ -1149,7 +1145,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: THEME.border,
     width: "100%",
   },
   meterMacroItem: {
@@ -1158,7 +1154,7 @@ const styles = StyleSheet.create({
   },
   meterMacroLabel: {
     fontSize: 10,
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 4,
@@ -1167,28 +1163,28 @@ const styles = StyleSheet.create({
   meterMacroValue: {
     fontSize: 15,
     fontWeight: "700",
-    color: COLORS.text,
+    color: THEME.text,
   },
   meterMacroDivider: {
     width: 1,
     height: 24,
-    backgroundColor: COLORS.border,
+    backgroundColor: THEME.border,
     marginHorizontal: 12,
   },
 
   // Input card
   inputCard: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: THEME.surface,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: THEME.border,
     marginBottom: 24,
   },
   inputLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 10,
@@ -1201,25 +1197,25 @@ const styles = StyleSheet.create({
   },
   addingToLabel: {
     fontSize: 11,
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     fontStyle: "italic",
     opacity: 0.8,
   },
   textInput: {
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: COLORS.text,
+    color: THEME.text,
     fontSize: 15,
     lineHeight: 22,
     minHeight: 52,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: THEME.border,
     marginBottom: 12,
   },
   addButton: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: THEME.accent,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
@@ -1249,13 +1245,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: COLORS.text,
+    color: THEME.text,
     letterSpacing: -0.3,
   },
   sectionCount: {
     fontSize: 13,
-    color: COLORS.textMuted,
-    backgroundColor: COLORS.surfaceElevated,
+    color: THEME.textMuted,
+    backgroundColor: THEME.surfaceElevated,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -1263,10 +1259,10 @@ const styles = StyleSheet.create({
 
   // Entry card
   entryCard: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: THEME.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: THEME.border,
     overflow: "hidden",
   },
   entryHeader: {
@@ -1289,7 +1285,7 @@ const styles = StyleSheet.create({
   entryRawTitle: {
     fontSize: 13,
     fontWeight: "400",
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     fontStyle: "italic",
     marginBottom: 3,
     lineHeight: 18,
@@ -1305,14 +1301,14 @@ const styles = StyleSheet.create({
   },
   entryTotalLabel: {
     fontSize: 10,
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     fontWeight: "500",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   entryTime: {
     fontSize: 11,
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
   },
 
   // Parsed divider
@@ -1325,11 +1321,11 @@ const styles = StyleSheet.create({
   parsedDividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: THEME.border,
   },
   parsedDividerLabel: {
     fontSize: 10,
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     fontWeight: "500",
     letterSpacing: 0.5,
     textTransform: "uppercase",
@@ -1356,13 +1352,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: "600",
-    color: COLORS.text,
+    color: THEME.text,
     marginRight: 8,
   },
   itemQty: {
     fontSize: 13,
     fontWeight: "400",
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
   },
   itemCalories: {
     fontSize: 13,
@@ -1371,7 +1367,7 @@ const styles = StyleSheet.create({
   },
   itemMacros: {
     fontSize: 11,
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     fontWeight: "500",
     letterSpacing: 0.2,
   },
@@ -1383,7 +1379,7 @@ const styles = StyleSheet.create({
   macroChip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -1392,14 +1388,14 @@ const styles = StyleSheet.create({
   macroChipLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     letterSpacing: 0.3,
     textTransform: "uppercase",
   },
   macroChipValue: {
     fontSize: 11,
     fontWeight: "600",
-    color: COLORS.textSubtle,
+    color: THEME.textSubtle,
   },
   separator: {
     height: 8,
@@ -1417,12 +1413,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: COLORS.text,
+    color: THEME.text,
     marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     textAlign: "center",
   },
   errorContainer: {
@@ -1431,7 +1427,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   errorText: {
-    color: COLORS.danger,
+    color: THEME.danger,
     fontSize: 12,
     fontWeight: "600",
   },

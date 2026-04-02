@@ -17,29 +17,9 @@ import { supabase } from '@/services/supabase';
 import CustomAlert from '@/components/CustomAlert';
 import { useRouter } from 'expo-router';
 import { saveApiKey } from '@/services/apiEncryption';
+import { THEME } from '@/constants/theme';
 
-// ─────────────────────────────────────────────
-// Theme
-// ─────────────────────────────────────────────
-const C = {
-  bg: '#0A0B0D',
-  surface: '#13151A',
-  surfaceElevated: '#1C1F27',
-  border: '#242830',
-  accent: '#6EE7B7',
-  accentDim: '#1A3B30',
-  indigo: '#818CF8',
-  indigoDim: '#1E1F3A',
-  amber: '#FCD34D',
-  amberDim: '#2D2510',
-  rose: '#FB7185',
-  roseDim: '#2D1520',
-  google: '#4285F4',
-  googleDim: '#0F1E3A',
-  text: '#F1F5F9',
-  textMuted: '#64748B',
-  textSubtle: '#94A3B8',
-};
+
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -133,9 +113,9 @@ function UnitToggle({
         <Switch
           value={isKg}
           onValueChange={onToggle}
-          trackColor={{ false: C.surfaceElevated, true: C.accentDim }}
-          thumbColor={isKg ? C.accent : C.textMuted}
-          ios_backgroundColor={C.surfaceElevated}
+          trackColor={{ false: THEME.surfaceElevated, true: THEME.accentDim }}
+          thumbColor={isKg ? THEME.accent : THEME.textMuted}
+          ios_backgroundColor={THEME.surfaceElevated}
         />
         <Text style={[styles.unitLabel, isKg && styles.unitLabelActive]}>kg</Text>
       </View>
@@ -163,7 +143,7 @@ function SettingRow({
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      <View style={[styles.settingIconWrap, { backgroundColor: C.surfaceElevated }]}>
+      <View style={[styles.settingIconWrap, { backgroundColor: THEME.surfaceElevated }]}>
         <Text style={styles.settingIcon}>{icon}</Text>
       </View>
       <Text style={[styles.settingLabel, { flex: 1 }]}>{label}</Text>
@@ -204,7 +184,7 @@ function GoogleFitButton({ connected, onShowInfo }: { connected: boolean; onShow
       <View
         style={[
           styles.googleFitStatusDot,
-          { backgroundColor: connected ? C.accent : C.textMuted },
+          { backgroundColor: connected ? THEME.accent : THEME.textMuted },
         ]}
       />
     </TouchableOpacity>
@@ -257,7 +237,7 @@ export default function ProfileScreen() {
       title: 'Sign Out',
       message: 'Are you sure you want to sign out?',
       confirmText: 'Sign Out',
-      confirmColor: C.rose,
+      confirmColor: THEME.rose,
       onConfirm: async () => {
         setAlertConfig(prev => ({ ...prev, visible: false }));
         setIsLoggingOut(true);
@@ -301,7 +281,7 @@ export default function ProfileScreen() {
     : diff < 0
       ? `${Math.abs(diff).toFixed(1)} ${unit} to lose`
       : `${Math.abs(diff).toFixed(1)} ${unit} to gain`;
-  const diffColor = diff === 0 ? C.accent : diff < 0 ? C.amber : C.indigo;
+  const diffColor = diff === 0 ? THEME.accent : diff < 0 ? THEME.amber : THEME.indigo;
 
   const handleSaveGoal = async () => {
     const val = parseInt(localGoal);
@@ -321,7 +301,7 @@ export default function ProfileScreen() {
       visible: true,
       title: 'Success',
       message: 'Calorie goal updated!',
-      confirmColor: C.accent,
+      confirmColor: THEME.accent,
       onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false })),
     });
   };
@@ -332,7 +312,7 @@ export default function ProfileScreen() {
       title: 'Remove API Key?',
       message: 'This will disable AI tracking and return you to the setup screen.',
       confirmText: 'Remove',
-      confirmColor: C.rose,
+      confirmColor: THEME.rose,
       onConfirm: async () => {
         setAlertConfig(prev => ({ ...prev, visible: false }));
         try {
@@ -351,7 +331,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={C.bg} />
+      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -364,9 +344,9 @@ export default function ProfileScreen() {
         {/* Stats strip */}
         <View style={styles.statsStrip}>
           {[
-            { label: 'Streak', value: `${streak}d`, color: C.amber },
-            { label: 'Entries', value: entries.length.toString(), color: C.accent },
-            { label: 'Goal', value: goalCalories.toString(), color: C.indigo },
+            { label: 'Streak', value: `${streak}d`, color: THEME.amber },
+            { label: 'Entries', value: entries.length.toString(), color: THEME.accent },
+            { label: 'Goal', value: goalCalories.toString(), color: THEME.indigo },
           ].map(s => (
             <View key={s.label} style={styles.statCell}>
               <Text style={[styles.statCellNum, { color: s.color }]}>{s.value}</Text>
@@ -385,7 +365,7 @@ export default function ProfileScreen() {
             value={height}
             onChange={setHeight}
             unit="cm"
-            accent={C.indigo}
+            accent={THEME.indigo}
           />
           <Divider />
           <MetricRow
@@ -393,7 +373,7 @@ export default function ProfileScreen() {
             value={currentWeight}
             onChange={setCurrentWeight}
             unit={unit}
-            accent={C.accent}
+            accent={THEME.accent}
           />
           <Divider />
           <MetricRow
@@ -401,7 +381,7 @@ export default function ProfileScreen() {
             value={targetWeight}
             onChange={setTargetWeight}
             unit={unit}
-            accent={C.accent}
+            accent={THEME.accent}
           />
           <Divider />
           {/* Progress toward goal */}
@@ -432,7 +412,7 @@ export default function ProfileScreen() {
         <View style={styles.card}>
           <View style={styles.goalInputRow}>
             <View style={styles.goalInputLeft}>
-              <View style={[styles.settingIconWrap, { backgroundColor: C.surfaceElevated }]}>
+              <View style={[styles.settingIconWrap, { backgroundColor: THEME.surfaceElevated }]}>
                 <Text style={styles.settingIcon}>🎯</Text>
               </View>
               <Text style={styles.settingLabel}>Daily calorie goal</Text>
@@ -445,7 +425,7 @@ export default function ProfileScreen() {
                 keyboardType="numeric"
                 returnKeyType="done"
                 placeholder="1800"
-                placeholderTextColor={C.textMuted}
+                placeholderTextColor={THEME.textMuted}
               />
               <Text style={styles.goalUnit}>kcal</Text>
             </View>
@@ -482,8 +462,8 @@ export default function ProfileScreen() {
         <View style={styles.card}>
           <View style={styles.aiRow}>
             <View style={styles.aiRowLeft}>
-              <View style={[styles.settingIconWrap, { backgroundColor: C.accentDim }]}>
-                <Text style={[styles.settingIcon, { color: C.accent }]}>✨</Text>
+              <View style={[styles.settingIconWrap, { backgroundColor: THEME.accentDim }]}>
+                <Text style={[styles.settingIcon, { color: THEME.accent }]}>✨</Text>
               </View>
               <View>
                 <Text style={styles.settingLabel}>OpenRouter AI</Text>
@@ -509,7 +489,7 @@ export default function ProfileScreen() {
               style={styles.aiActionBtn} 
               onPress={handleRemoveKey}
             >
-              <Text style={[styles.aiActionText, { color: C.rose }]}>Remove</Text>
+              <Text style={[styles.aiActionText, { color: THEME.rose }]}>Remove</Text>
             </TouchableOpacity>
           </View>
           
@@ -548,7 +528,7 @@ export default function ProfileScreen() {
           <SettingRow
             icon="🚪"
             label={isLoggingOut ? 'Signing out...' : 'Sign out'}
-            accent={C.rose}
+            accent={THEME.rose}
             onPress={isLoggingOut ? undefined : handleSignOut}
           />
         </View>
@@ -573,7 +553,7 @@ export default function ProfileScreen() {
 // Styles
 // ─────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
+  safe: { flex: 1, backgroundColor: THEME.bg },
   scroll: { flex: 1 },
   content: { paddingHorizontal: 20, paddingBottom: 100 },
 
@@ -588,11 +568,11 @@ const styles = StyleSheet.create({
     height: 90,
     borderRadius: 45,
     borderWidth: 2,
-    borderColor: C.accent,
+    borderColor: THEME.accent,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
-    shadowColor: C.accent,
+    shadowColor: THEME.accent,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -602,50 +582,50 @@ const styles = StyleSheet.create({
     width: 78,
     height: 78,
     borderRadius: 39,
-    backgroundColor: C.accentDim,
+    backgroundColor: THEME.accentDim,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitials: {
     fontSize: 28,
     fontWeight: '800',
-    color: C.accent,
+    color: THEME.accent,
     letterSpacing: -0.5,
   },
   profileName: {
     fontSize: 20,
     fontWeight: '800',
-    color: C.text,
+    color: THEME.text,
     letterSpacing: -0.3,
   },
   profileEmail: {
     fontSize: 13,
-    color: C.textMuted,
+    color: THEME.textMuted,
     marginTop: 4,
     marginBottom: 10,
   },
   memberBadge: {
-    backgroundColor: C.indigoDim,
+    backgroundColor: THEME.indigoDim,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderWidth: 1,
-    borderColor: C.indigo + '50',
+    borderColor: THEME.indigo + '50',
   },
   memberBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: C.indigo,
+    color: THEME.indigo,
     letterSpacing: 0.4,
   },
 
   // Stats strip
   statsStrip: {
     flexDirection: 'row',
-    backgroundColor: C.surface,
+    backgroundColor: THEME.surface,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: THEME.border,
     marginBottom: 20,
     overflow: 'hidden',
   },
@@ -661,7 +641,7 @@ const styles = StyleSheet.create({
   },
   statCellLabel: {
     fontSize: 11,
-    color: C.textMuted,
+    color: THEME.textMuted,
     marginTop: 3,
     fontWeight: '500',
   },
@@ -670,7 +650,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: C.textMuted,
+    color: THEME.textMuted,
     letterSpacing: 1.2,
     marginBottom: 10,
     marginTop: 4,
@@ -678,16 +658,16 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    backgroundColor: C.surface,
+    backgroundColor: THEME.surface,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: THEME.border,
     marginBottom: 12,
     overflow: 'hidden',
   },
   divider: {
     height: 1,
-    backgroundColor: C.border,
+    backgroundColor: THEME.border,
     marginHorizontal: 16,
   },
 
@@ -706,13 +686,13 @@ const styles = StyleSheet.create({
   },
   unitLabel: {
     fontSize: 13,
-    color: C.textMuted,
+    color: THEME.textMuted,
     fontWeight: '600',
     width: 24,
     textAlign: 'center',
   },
   unitLabelActive: {
-    color: C.accent,
+    color: THEME.accent,
   },
 
   // Weight row
@@ -725,7 +705,7 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 15,
-    color: C.text,
+    color: THEME.text,
     fontWeight: '500',
   },
 
@@ -762,17 +742,17 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 15,
-    color: C.text,
+    color: THEME.text,
     fontWeight: '500',
   },
   settingValue: {
     fontSize: 14,
-    color: C.textMuted,
+    color: THEME.textMuted,
     fontWeight: '500',
   },
   settingChevron: {
     fontSize: 20,
-    color: C.textMuted,
+    color: THEME.textMuted,
     lineHeight: 24,
   },
 
@@ -782,16 +762,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     gap: 14,
-    backgroundColor: C.googleDim,
+    backgroundColor: THEME.googleDim,
   },
   googleFitBtnConnected: {
-    backgroundColor: C.accentDim,
+    backgroundColor: THEME.accentDim,
   },
   googleLogoWrap: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: C.google,
+    backgroundColor: THEME.google,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -807,12 +787,12 @@ const styles = StyleSheet.create({
   googleFitTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: C.text,
+    color: THEME.text,
     marginBottom: 2,
   },
   googleFitSub: {
     fontSize: 12,
-    color: C.textMuted,
+    color: THEME.textMuted,
   },
   googleFitStatusDot: {
     width: 8,
@@ -824,7 +804,7 @@ const styles = StyleSheet.create({
   versionText: {
     textAlign: 'center',
     fontSize: 12,
-    color: C.textMuted,
+    color: THEME.textMuted,
     marginTop: 16,
     marginBottom: 8,
   },
@@ -845,15 +825,15 @@ const styles = StyleSheet.create({
   goalInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: THEME.border,
   },
   goalInput: {
-    color: C.accent,
+    color: THEME.accent,
     fontSize: 16,
     fontWeight: '700',
     textAlign: 'right',
@@ -861,13 +841,13 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   goalUnit: {
-    color: C.textMuted,
+    color: THEME.textMuted,
     fontSize: 12,
     marginLeft: 4,
     fontWeight: '600',
   },
   saveBtn: {
-    backgroundColor: C.accent,
+    backgroundColor: THEME.accent,
     marginHorizontal: 16,
     marginBottom: 16,
     height: 52,
@@ -895,29 +875,29 @@ const styles = StyleSheet.create({
   },
   aiKeyText: {
     fontSize: 12,
-    color: C.textMuted,
+    color: THEME.textMuted,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     marginTop: 2,
   },
   aiBadge: {
-    backgroundColor: C.accentDim,
+    backgroundColor: THEME.accentDim,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: C.accent + '30',
+    borderColor: THEME.accent + '30',
   },
   aiBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: C.accent,
+    color: THEME.accent,
     textTransform: 'uppercase',
   },
   aiActions: {
     flexDirection: 'row',
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: C.border,
+    borderColor: THEME.border,
   },
   aiActionBtn: {
     flex: 1,
@@ -928,19 +908,19 @@ const styles = StyleSheet.create({
   aiActionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: C.text,
+    color: THEME.text,
   },
   aiActionDivider: {
     width: 1,
-    backgroundColor: C.border,
+    backgroundColor: THEME.border,
   },
   aiFooter: {
     padding: 16,
-    backgroundColor: C.bg + '50',
+    backgroundColor: THEME.bg + '50',
   },
   aiFooterText: {
     fontSize: 12,
-    color: C.textMuted,
+    color: THEME.textMuted,
     lineHeight: 18,
     textAlign: 'center',
   },

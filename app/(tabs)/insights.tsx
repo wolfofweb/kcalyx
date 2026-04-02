@@ -7,22 +7,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { THEME } from '@/constants/theme';
+
 // ─────────────────────────────────────────────
-// Theme
+// Screen
 // ─────────────────────────────────────────────
-const C = {
-  bg: '#0A0B0D',
-  surface: '#13151A',
-  border: '#242830',
-  text: '#F1F5F9',
-  textMuted: '#64748B',
-  indigo: '#818CF8',
-};
 
 export default function InsightsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={C.bg} />
+      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.screenTitle}>Insights</Text>
@@ -42,31 +36,31 @@ export default function InsightsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
+  safe: { flex: 1, backgroundColor: THEME.bg },
   container: { flex: 1, paddingHorizontal: 20 },
   
   header: {
-    paddingTop: 16,
+    paddingTop: 24,
     paddingBottom: 20,
   },
   screenTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: C.text,
+    color: THEME.text,
     letterSpacing: -0.5,
   },
   screenSub: {
     fontSize: 13,
-    color: C.textMuted,
-    marginTop: 2,
+    color: THEME.textMuted,
+    marginTop: 6,
   },
 
   comingSoonCard: {
     flex: 1,
-    backgroundColor: C.surface,
+    backgroundColor: THEME.surface,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: THEME.border,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
@@ -80,13 +74,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: C.text,
+    color: THEME.text,
     marginBottom: 12,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 15,
-    color: C.textMuted,
+    color: THEME.textMuted,
     textAlign: 'center',
     lineHeight: 24,
     maxWidth: 280,

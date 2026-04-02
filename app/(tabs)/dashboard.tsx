@@ -9,26 +9,9 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import dayjs from 'dayjs';
 import useStore from '@/store/useStore';
-
-// ─────────────────────────────────────────────
-// Theme
-// ─────────────────────────────────────────────
-const C = {
-  bg: '#0A0B0D',
-  surface: '#13151A',
-  surfaceElevated: '#1C1F27',
-  border: '#242830',
-  accent: '#6EE7B7',
-  accentDim: '#1A3B30',
-  indigo: '#818CF8',
-  indigoDim: '#1E1F3A',
-  amber: '#FCD34D',
-  amberDim: '#2D2510',
-  text: '#F1F5F9',
-  textMuted: '#64748B',
-  textSubtle: '#94A3B8',
-};
+import { THEME } from '@/constants/theme';
 
 // ─────────────────────────────────────────────
 // Placeholder data
@@ -60,10 +43,11 @@ function SectionLabel({ label }: { label: string }) {
 
 /** Top hero card – today's calories */
 function CalorieCard() {
-  const totalCalories = useStore((state) => state.totalCalories);
-  const totalProtein = useStore((state) => state.totalProtein);
-  const totalCarbs = useStore((state) => state.totalCarbs);
-  const totalFat = useStore((state) => state.totalFat);
+  const statsToday = useStore((state) => state.statsToday);
+  const totalCalories = statsToday.calories;
+  const totalProtein = statsToday.protein;
+  const totalCarbs = statsToday.carbs;
+  const totalFat = statsToday.fat;
   
   const goalCalories = useStore((state: any) => state.goalCalories);
   
@@ -81,7 +65,7 @@ function CalorieCard() {
   const fatPct = Math.min(totalFat / FAT_GOAL, 1);
 
   return (
-    <View style={[styles.card, styles.heroCard, isOver && { borderColor: '#F87171' }]}>
+    <View style={[styles.card, styles.heroCard, isOver && { borderColor: THEME.danger }]}>
       {/* Top row */}
       <View style={styles.heroTop}>
         <View>
@@ -91,20 +75,20 @@ function CalorieCard() {
             <Text style={styles.heroUnit}> kcal</Text>
           </Text>
         </View>
-        <View style={[styles.heroBadge, isOver && { backgroundColor: '#450A0A' }]}>
+        <View style={[styles.heroBadge, isOver && { backgroundColor: THEME.danger }]}>
           <Text style={styles.heroBadgeText}>{isOver ? '⚠️' : '🔥'}</Text>
         </View>
       </View>
 
       {/* Progress bar */}
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${Math.min(pct,1) * 100}%` as any, backgroundColor: isOver ? '#F87171' : C.accent }]} />
+        <View style={[styles.progressFill, { width: `${Math.min(pct,1) * 100}%` as any, backgroundColor: isOver ? THEME.danger : THEME.accent }]} />
       </View>
 
       {/* Footer row */}
       <View style={styles.heroFooter}>
         <Text style={styles.heroFooterText}>Goal: {goalCalories.toLocaleString()} kcal</Text>
-        <Text style={[styles.heroFooterText, { color: isOver ? '#F87171' : C.accent }]}>
+        <Text style={[styles.heroFooterText, { color: isOver ? THEME.danger : THEME.accent }]}>
           {diff.toLocaleString()} {isOver ? 'over limit' : 'remaining'}
         </Text>
       </View>
@@ -112,9 +96,9 @@ function CalorieCard() {
       {/* Macro chips */}
       <View style={styles.macroRow}>
         {[
-          { label: 'Protein', value: `${totalProtein}g`, pct: proteinPct, color: C.indigo },
-          { label: 'Carbs', value: `${totalCarbs}g`, pct: carbsPct, color: C.amber },
-          { label: 'Fat', value: `${totalFat}g`, pct: fatPct, color: C.accent },
+          { label: 'Protein', value: `${totalProtein}g`, pct: proteinPct, color: THEME.indigo },
+          { label: 'Carbs', value: `${totalCarbs}g`, pct: carbsPct, color: THEME.amber },
+          { label: 'Fat', value: `${totalFat}g`, pct: fatPct, color: THEME.accent },
         ].map(m => (
           <View key={m.label} style={styles.macroChip}>
             <View style={styles.macroChipTrack}>
@@ -123,7 +107,7 @@ function CalorieCard() {
                   styles.macroChipFill,
                   { 
                     width: `${m.pct * 100}%` as any,
-                    backgroundColor: m.color || C.accent 
+                    backgroundColor: m.color || THEME.accent 
                   },
                 ]}
               />
@@ -141,7 +125,7 @@ function CalorieCard() {
 function WeeklyChart() {
   const weeklyData = useStore((state: any) => state.weeklyData);
   const goalCalories = useStore((state: any) => state.goalCalories);
-  const totalCalories = useStore((state: any) => state.totalCalories);
+  const isWeeklyLoading = useStore((state: any) => state.isWeeklyLoading);
 
   return (
     <View style={styles.card}>
@@ -155,27 +139,53 @@ function WeeklyChart() {
 
       {/* Bars */}
       <View style={styles.chartArea}>
+        {/* Goal Dotted Line */}
+        <View 
+          style={[
+            styles.goalLine, 
+            { bottom: 35 + 70 } // match label height + track padding
+          ]} 
+        />
+        
+        {isWeeklyLoading && (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: THEME.bg + '80', zIndex: 10, alignItems: 'center', justifyContent: 'center' }]}>
+            <Text style={{ color: THEME.accent, fontWeight: '600' }}>Loading...</Text>
+          </View>
+        )}
+
         {weeklyData.map((day: any, i: number) => {
           const isToday = i === (weeklyData.length - 1);
-          // Use real calories for today from daily total if it's the current date
-          const barValue = Math.min(day.calories / goalCalories, 1.2);
+          const effectiveGoal = goalCalories || 2000;
+          const barValue = Math.min(day.calories / effectiveGoal, 1.3); // allow slight overflow
+          
+          const barHeight = Math.max(Math.round(barValue * 70), day.calories > 0 ? 4 : 0);
 
           return (
             <View key={day.date} style={styles.barCol}>
+              <Text style={[styles.barCalText, isToday && { color: THEME.accent, fontWeight: '700' }]}>
+                {day.calories > 0 ? day.calories : ''}
+              </Text>
+              
               <View style={styles.barTrack}>
                 <View
                   style={[
                     styles.barFill,
                     {
-                      height: `${barValue * 100}%` as any,
-                      backgroundColor: isToday ? C.accent : C.surfaceElevated,
-                      borderColor: isToday ? C.accent : C.border,
+                      height: barHeight,
+                      backgroundColor: isToday ? THEME.accent : THEME.indigo,
+                      borderColor: isToday ? THEME.accent : THEME.indigo + '40',
+                      borderWidth: day.calories > 0 ? 1 : 0,
+                      opacity: isToday ? 1 : 0.7,
                     },
                   ]}
                 />
               </View>
-              <Text style={[styles.barDay, isToday && { color: C.accent }]}>
-                {day.dayName}
+
+              <Text 
+                numberOfLines={1}
+                style={[styles.barDay, isToday && { color: THEME.accent, fontWeight: '700' }]}
+              >
+                {day.day}
               </Text>
             </View>
           );
@@ -185,11 +195,11 @@ function WeeklyChart() {
       {/* Legend */}
       <View style={styles.legendRow}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: C.accent }]} />
+          <View style={[styles.legendDot, { backgroundColor: THEME.accent }]} />
           <Text style={styles.legendText}>Today</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: C.surfaceElevated, borderWidth: 1, borderColor: C.border }]} />
+          <View style={[styles.legendDot, { backgroundColor: THEME.surfaceElevated, borderWidth: 1, borderColor: THEME.border }]} />
           <Text style={styles.legendText}>Other days</Text>
         </View>
       </View>
@@ -216,7 +226,7 @@ function StepsCard() {
             styles.miniProgressFill,
             {
               width: `${pct * 100}%` as any,
-              backgroundColor: C.indigo,
+              backgroundColor: THEME.indigo,
             },
           ]}
         />
@@ -237,7 +247,7 @@ function ConsistencyCard() {
       <View style={styles.statIconWrap}>
         <Text style={styles.statIcon}>⚡</Text>
       </View>
-      <Text style={[styles.statNumber, { color: C.amber }]}>{consistencyPct}%</Text>
+      <Text style={[styles.statNumber, { color: THEME.amber }]}>{consistencyPct}%</Text>
       <Text style={styles.statLabel}>Consistency score</Text>
 
       {/* Dot grid for last 7 days */}
@@ -247,7 +257,7 @@ function ConsistencyCard() {
             key={day.date}
             style={[
               styles.dot,
-              { backgroundColor: day.calories > 0 ? C.amber : C.surfaceElevated },
+              { backgroundColor: day.calories > 0 ? THEME.amber : THEME.surfaceElevated },
             ]}
           />
         ))}
@@ -266,7 +276,7 @@ function WeeklySummaryCard() {
   const trendMessage = useStore((s: any) => s.trendMessage);
   const trendStatus = useStore((s: any) => s.trendStatus);
 
-  const trendColor = trendStatus === 'improving' ? C.accent : (trendStatus === 'warning' ? '#F87171' : C.textMuted);
+  const trendColor = trendStatus === 'improving' ? THEME.accent : (trendStatus === 'warning' ? THEME.danger : THEME.textMuted);
 
   return (
     <View style={styles.card}>
@@ -287,7 +297,7 @@ function WeeklySummaryCard() {
         </View>
         <View style={styles.summaryDivider} />
         <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: C.accent }]}>{streak}</Text>
+          <Text style={[styles.summaryValue, { color: THEME.accent }]}>{streak}</Text>
           <Text style={styles.summaryLabel}>Streak</Text>
         </View>
       </View>
@@ -305,26 +315,27 @@ function WeeklySummaryCard() {
 // Screen
 // ─────────────────────────────────────────────
 export default function DashboardScreen() {
-  const fetchEntries = useStore((s: any) => s.fetchEntries);
+  const fetchTodayStats = useStore((s: any) => s.fetchTodayStats);
   const fetchWeeklyData = useStore((s: any) => s.fetchWeeklyData);
-  const weeklyData = useStore((s: any) => s.weeklyData);
-  const totalCalories = useStore((s: any) => s.totalCalories);
+  const user = useStore((s: any) => s.user);
+  const { entries } = useStore(); // for mutation reference if needed, though we fetch fresh stats
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const today = dayjs().format('YYYY-MM-DD');
 
   // Auto-refresh data when user navigates to this tab
   useFocusEffect(
     useCallback(() => {
-      fetchEntries().catch(console.error);
-      fetchWeeklyData().catch(console.error);
-    }, [fetchEntries, fetchWeeklyData])
+      fetchTodayStats().catch(console.error);
+      fetchWeeklyData(user?.id, today).catch(console.error);
+    }, [user, today])
   );
 
   const onRefresh = async () => {
     setIsRefreshing(true);
     try {
       await Promise.all([
-        fetchEntries(),
-        fetchWeeklyData()
+        fetchTodayStats(),
+        fetchWeeklyData(user?.id, today)
       ]);
     } catch (err) {
       console.error("Dashboard refresh failed:", err);
@@ -343,9 +354,9 @@ export default function DashboardScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor={C.accent}
-            colors={[C.accent]}
-            progressBackgroundColor={C.surfaceElevated}
+            tintColor={THEME.accent}
+            colors={[THEME.accent]}
+            progressBackgroundColor={THEME.surfaceElevated}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -384,7 +395,7 @@ export default function DashboardScreen() {
 // Styles
 // ─────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
+  safe: { flex: 1, backgroundColor: THEME.bg },
   scroll: { flex: 1 },
   content: { paddingHorizontal: 20, paddingBottom: 100 },
 
@@ -402,18 +413,18 @@ const styles = StyleSheet.create({
   summaryDivider: {
     width: 1,
     height: 30,
-    backgroundColor: C.border,
+    backgroundColor: THEME.border,
     opacity: 0.6,
   },
   summaryValue: {
     fontSize: 18,
     fontWeight: '800',
-    color: C.text,
+    color: THEME.text,
     letterSpacing: -0.5,
   },
   summaryLabel: {
     fontSize: 10,
-    color: C.textMuted,
+    color: THEME.textMuted,
     marginTop: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -425,7 +436,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: C.border,
+    borderTopColor: THEME.border,
     gap: 8,
   },
   trendDot: {
@@ -440,24 +451,24 @@ const styles = StyleSheet.create({
   },
 
   // Header
-  header: { paddingTop: 16, paddingBottom: 20 },
+  header: { paddingTop: 24, paddingBottom: 20 },
   screenTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: C.text,
+    color: THEME.text,
     letterSpacing: -0.5,
   },
   screenSub: {
     fontSize: 13,
-    color: C.textMuted,
-    marginTop: 2,
+    color: THEME.textMuted,
+    marginTop: 6,
   },
 
   // Section label
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: C.textMuted,
+    color: THEME.textMuted,
     letterSpacing: 1.2,
     marginBottom: 10,
     marginTop: 4,
@@ -465,11 +476,11 @@ const styles = StyleSheet.create({
 
   // Card base
   card: {
-    backgroundColor: C.surface,
+    backgroundColor: THEME.surface,
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: THEME.border,
     marginBottom: 12,
   },
   cardHeader: {
@@ -481,25 +492,25 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: C.text,
+    color: THEME.text,
     letterSpacing: -0.3,
   },
   cardSubtitle: {
     fontSize: 12,
-    color: C.textMuted,
+    color: THEME.textMuted,
     marginBottom: 16,
   },
 
   // Pill chip
   chipPill: {
-    backgroundColor: C.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   chipPillText: {
     fontSize: 11,
-    color: C.textMuted,
+    color: THEME.textMuted,
     fontWeight: '500',
   },
 
@@ -513,7 +524,7 @@ const styles = StyleSheet.create({
   },
   heroLabel: {
     fontSize: 12,
-    color: C.textMuted,
+    color: THEME.textMuted,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
@@ -522,20 +533,20 @@ const styles = StyleSheet.create({
   heroNumber: {
     fontSize: 36,
     fontWeight: '800',
-    color: C.text,
+    color: THEME.text,
     letterSpacing: -1,
   },
   heroUnit: {
     fontSize: 16,
     fontWeight: '500',
-    color: C.textMuted,
+    color: THEME.textMuted,
     letterSpacing: 0,
   },
   heroBadge: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: C.accentDim,
+    backgroundColor: THEME.accentDim,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -544,14 +555,14 @@ const styles = StyleSheet.create({
   // Progress bar
   progressTrack: {
     height: 6,
-    backgroundColor: C.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     borderRadius: 3,
     overflow: 'hidden',
     marginBottom: 10,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: C.accent,
+    backgroundColor: THEME.accent,
     borderRadius: 3,
   },
   heroFooter: {
@@ -561,7 +572,7 @@ const styles = StyleSheet.create({
   },
   heroFooterText: {
     fontSize: 13,
-    color: C.textMuted,
+    color: THEME.textMuted,
   },
 
   // Macro chips
@@ -571,32 +582,32 @@ const styles = StyleSheet.create({
   },
   macroChip: {
     flex: 1,
-    backgroundColor: C.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     borderRadius: 12,
     padding: 10,
   },
   macroChipTrack: {
     height: 3,
-    backgroundColor: C.border,
+    backgroundColor: THEME.border,
     borderRadius: 2,
     overflow: 'hidden',
     marginBottom: 8,
   },
   macroChipFill: {
     height: '100%',
-    backgroundColor: C.accent,
+    backgroundColor: THEME.accent,
     opacity: 0.7,
     borderRadius: 2,
   },
   macroLabel: {
     fontSize: 11,
-    color: C.textMuted,
+    color: THEME.textMuted,
     marginBottom: 2,
   },
   macroValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: C.text,
+    color: THEME.text,
   },
 
   // Quick stats
@@ -607,11 +618,11 @@ const styles = StyleSheet.create({
   },
   quickCard: {
     flex: 1,
-    backgroundColor: C.surface,
+    backgroundColor: THEME.surface,
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: THEME.border,
     alignItems: 'center',
   },
   quickValue: {
@@ -621,12 +632,12 @@ const styles = StyleSheet.create({
   },
   quickUnit: {
     fontSize: 11,
-    color: C.textMuted,
+    color: THEME.textMuted,
     marginTop: 1,
   },
   quickLabel: {
     fontSize: 11,
-    color: C.textMuted,
+    color: THEME.textMuted,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -636,13 +647,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    height: 100,
+    height: 130,
     marginBottom: 12,
+    position: 'relative',
+    paddingTop: 10,
+  },
+  goalLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1.5,
+    borderTopWidth: 1.5,
+    borderTopColor: THEME.accent,
+    borderStyle: 'dashed',
+    opacity: 0.4,
+    zIndex: 1,
   },
   barCol: {
     flex: 1,
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
+    position: 'relative',
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  barCalText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: THEME.textSubtle,
+    marginBottom: 2,
   },
   barTrack: {
     flex: 1,
@@ -651,12 +684,12 @@ const styles = StyleSheet.create({
   },
   barFill: {
     width: '100%',
-    borderRadius: 6,
+    borderRadius: 10,
     borderWidth: 1,
   },
   barDay: {
     fontSize: 10,
-    color: C.textMuted,
+    color: THEME.textMuted,
     fontWeight: '500',
   },
   legendRow: {
@@ -675,7 +708,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: C.textMuted,
+    color: THEME.textMuted,
   },
 
   // Half cards
@@ -692,7 +725,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: C.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -701,12 +734,12 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 26,
     fontWeight: '800',
-    color: C.text,
+    color: THEME.text,
     letterSpacing: -0.5,
   },
   statLabel: {
     fontSize: 12,
-    color: C.textMuted,
+    color: THEME.textMuted,
     marginTop: 4,
     marginBottom: 12,
     textAlign: 'center',
@@ -716,7 +749,7 @@ const styles = StyleSheet.create({
   miniProgressTrack: {
     width: '100%',
     height: 5,
-    backgroundColor: C.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     borderRadius: 3,
     overflow: 'hidden',
     marginBottom: 8,

@@ -15,18 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import useStore from '@/store/useStore';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { THEME } from '@/constants/theme';
 
-const COLORS = {
-  bg: '#000000',
-  surface: '#121212',
-  surfaceElevated: '#1E1E1E',
-  border: '#2A2A2A',
-  accent: '#6EE7B7',
-  text: '#FFFFFF',
-  textMuted: '#9BA1A6',
-  danger: '#F87171',
-  success: '#34D399',
-};
+
 
 export default function ConnectAIScreen() {
   const router = useRouter();
@@ -155,7 +146,7 @@ export default function ConnectAIScreen() {
                   setStatus({ type: 'idle', message: '' });
                 }}
                 placeholder="sk-or-v1-..."
-                placeholderTextColor={COLORS.textMuted}
+                placeholderTextColor={THEME.textMuted}
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -180,7 +171,7 @@ export default function ConnectAIScreen() {
               disabled={!keyInput || isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator color={COLORS.bg} />
+                <ActivityIndicator color={THEME.bg} />
               ) : (
                 <Text style={styles.verifyBtnText}>Verify Key</Text>
               )}
@@ -206,7 +197,7 @@ export default function ConnectAIScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.bg,
+    backgroundColor: THEME.bg,
   },
   scrollContent: {
     padding: 24,
@@ -219,27 +210,27 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: COLORS.text,
+    color: THEME.text,
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     lineHeight: 22,
   },
   card: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: THEME.surface,
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: THEME.border,
     marginBottom: 32,
   },
   cardTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.text,
+    color: THEME.text,
     marginBottom: 16,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -253,23 +244,23 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   stepNumberText: {
-    color: COLORS.accent,
+    color: THEME.accent,
     fontSize: 12,
     fontWeight: '700',
   },
   stepText: {
     fontSize: 15,
-    color: COLORS.text,
+    color: THEME.text,
     opacity: 0.9,
   },
   link: {
-    color: COLORS.accent,
+    color: THEME.accent,
     textDecorationLine: 'underline',
   },
   bold: {
@@ -281,21 +272,21 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.textMuted,
+    color: THEME.textMuted,
     marginBottom: 8,
     marginLeft: 4,
   },
   inputWrap: {
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: THEME.border,
     paddingHorizontal: 16,
     height: 60,
     justifyContent: 'center',
   },
   input: {
-    color: COLORS.text,
+    color: THEME.text,
     fontSize: 16,
     width: '100%',
   },
@@ -308,13 +299,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   errorText: {
-    color: COLORS.danger,
+    color: THEME.danger,
   },
   successText: {
-    color: COLORS.success,
+    color: THEME.success,
   },
   verifyBtn: {
-    backgroundColor: COLORS.text,
+    backgroundColor: THEME.text,
     borderRadius: 16,
     height: 56,
     alignItems: 'center',
@@ -322,7 +313,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   verifyBtnText: {
-    color: COLORS.bg,
+    color: THEME.bg,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -330,20 +321,20 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   continueBtn: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: THEME.accent,
     borderRadius: 18,
     height: 64,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 40,
-    shadowColor: COLORS.accent,
+    shadowColor: THEME.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 5,
   },
   continueBtnDisabled: {
-    backgroundColor: COLORS.surfaceElevated,
+    backgroundColor: THEME.surfaceElevated,
     opacity: 0.5,
   },
   continueBtnText: {

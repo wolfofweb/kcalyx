@@ -1,53 +1,58 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Kcalyx Theme System
+ * Centralized color palette and tokens used throughout the application.
+ * Modify these values to change the app's look and feel globally.
  */
 
-import { Platform } from 'react-native';
+export const THEME = {
+  // Core Colors
+  bg: '#0A0B0D',           // Primary background
+  surface: '#13151A',      // Surface for cards and secondary areas
+  surfaceElevated: '#1C1F27', // Slightly lighter surface for nested elements
+  border: '#242830',       // Standard border color
+  
+  // Brand & Action Colors
+  accent: '#6EE7B7',       // Main brand color (Mint Green)
+  accentDim: '#1A3B30',    // Muted/Low-opacity version of accent
+  accentSecondary: '#818CF8', // Secondary indigo (used in charts/icons)
+  indigo: '#818CF8',       // Explicit indigo access
+  indigoDim: '#1E1F3A',    // Muted indigo
+  amber: '#FCD34D',        // Warning/Highlight (Consistency)
+  rose: '#F43F5E',         // Danger/Remove actions
+  danger: '#F87171',       // Error/Delete alerts
+  dangerDim: '#2D1515',    // Muted danger background
+  
+  google: '#4285F4',        // Google Brand Color
+  googleDim: '#0F1E3A',     // Muted Google background
+  
+  // Typography
+  text: '#F1F5F9',         // Primary text
+  textMuted: '#64748B',    // Subtitles and less important info
+  textSubtle: '#94A3B8',   // Inline labels and helper text
+  
+  // Status & Success
+  success: '#34D399',      // Verified/Success states
+  
+  // Transparency Helpers (useful for gradients or overlays)
+  overlay: 'rgba(0, 0, 0, 0.8)',
+};
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
+// Keeping the original Expo structure for compatibility if needed elsewhere
 export const Colors = {
   light: {
     text: '#11181C',
     background: '#fff',
-    tint: tintColorLight,
+    tint: '#0a7ea4',
     icon: '#687076',
     tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    tabIconSelected: '#0a7ea4',
   },
   dark: {
-    text: '#F8F9FA',
-    background: '#0D0E10',
-    tint: '#FFFFFF',
-    icon: '#6C757D',
-    tabIconDefault: '#6C757D',
-    tabIconSelected: '#FFFFFF',
+    text: THEME.text,
+    background: THEME.bg,
+    tint: THEME.accent,
+    icon: THEME.textMuted,
+    tabIconDefault: THEME.textMuted,
+    tabIconSelected: THEME.accent,
   },
 };
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
